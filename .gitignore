@@ -1,0 +1,54 @@
+﻿# Build outputs
+**/bin/
+**/obj/
+
+# User-specific IDE settings
+*.user
+*.rsuser
+*.suo
+*.userprefs
+
+# Rider / IntelliJ
+.idea/
+*.iml
+
+# Logs
+*.log
+
+# EF Core / design-time
+migrations/**/__EFMigrationsHistory
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# SQLite database (recreate from migrations)
+PressureMonitor/PressureMonitor.db
+PressureMonitor.db
+
+# Cache
+*.cache
+
+# Published output
+**/publish/
+
+# Tooling
+*.ps1
+
+# JSON cache artifacts
+**/*.json.cache
+
+# Ignore scoped css artifacts
+**/scopedcss/
+
+# Ignore generated static web assets
+**/staticwebassets*.json
+
+# Ignore dll/pdb/exe produced binaries
+**/*.dll
+**/*.pdb
+**/*.exe
+
+# Bundle artifacts
+*.bundle
+
