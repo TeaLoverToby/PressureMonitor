@@ -1,0 +1,36 @@
+﻿@{
+    ViewData["Title"] = "Register";
+}
+
+@model User
+
+<div class="text-center">
+    <h1 class="display-4">Register</h1>
+    
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible">
+            @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+
+    <form asp-action="HandleRegister" method="post">
+        <div class="mb-3">
+            <label asp-for="Username" class="form-label">Username</label>
+            <input asp-for="Username" class="form-control form-control-lg" placeholder="Username:" required />
+            <span asp-validation-for="Username" class="text-danger"></span>
+        </div>
+                        
+        <div class="mb-3">
+            <label asp-for="Password" class="form-label">Password</label>
+            <input asp-for="Password" type="password" class="form-control form-control-lg" placeholder="Password:" required />
+            <span asp-validation-for="Password" class="text-danger"></span>
+        </div>
+        
+        <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary btn-lg">Register</button>
+        </div>
+    </form>
+</div>
