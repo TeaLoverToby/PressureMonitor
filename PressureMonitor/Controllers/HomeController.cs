@@ -49,12 +49,6 @@ public class HomeController(ILogger<HomeController> logger, ApplicationDbContext
         return View();
     }
 
-    [Authorize]
-    public IActionResult Privacy()
-    {
-        return View();
-    }
-
     [HttpPost]
     [AllowAnonymous]
     public async Task<IActionResult> HandleLogin(User? user)
