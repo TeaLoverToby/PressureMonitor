@@ -1,4 +1,5 @@
-﻿<!DOCTYPE html>
+﻿@using System.Security.Claims
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8"/>
@@ -14,20 +15,43 @@
     <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
         <div class="container-fluid">
             <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">PressureMonitor</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
-                    aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                 <ul class="navbar-nav flex-grow-1 justify-content-start">
                     <li class="nav-item">
-                        <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                        <a class="nav-link text-dark" asp-area="" asp-controller="User" asp-action="Dashboard">Home</a>
                     </li>
+                    
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Register">Create User</a>
+                        </li>
+                    }
+                    
+                    @if (User.IsInRole("Clinician"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="User" asp-action="ClinicianDashboard">My Dashboard</a>
+                        </li>
+                    }
+                    
+                    @if (User.IsInRole("Patient"))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link text-dark" asp-area="" asp-controller="User" asp-action="PatientDashboard">My Records</a>
+                        </li>
+                    }
                 </ul>
                 
                 <ul class="navbar-nav flex-grow-1 justify-content-end">
                     @if (User.Identity.IsAuthenticated)
                     {
+                        <li class="nav-item d-flex align-items-center me-3">
+                            <span class="navbar-text">@User.Identity.Name</span>
+                        </li>
                         <li class="nav-item">
                             <form asp-area="" asp-controller="Home" asp-action="Logout" method="post" class="form-inline">
                                 <button type="submit" class="nav-link btn btn-link text-dark">Logout</button>
