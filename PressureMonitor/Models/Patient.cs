@@ -16,5 +16,5 @@ public class Patient
     
     public DateTime? DateOfBirth { get; set; }
     
+    public List<PressureMap> PressureMaps { get; set; } = [];
 }
-
