@@ -19,4 +19,11 @@ public class User
     [StringLength(255)]
     public string? Password { get; set; }
     
+    public UserType UserType { get; set; } = UserType.Patient;
+    
+    // This is nullable data for certain user types
+    public Clinician? Clinician { get; set; }
+    public Patient? Patient { get; set; }
+    
+    public Admin? Admin { get; set; }
 }
