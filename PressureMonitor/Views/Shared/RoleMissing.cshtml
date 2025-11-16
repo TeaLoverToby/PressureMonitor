@@ -1,0 +1,15 @@
+﻿@{
+    ViewData["Title"] = "Data Missing";
+}
+<div class="container mt-5">
+    <div class="card shadow-sm mx-auto">
+        <div class="card-body text-center">
+            <h3 class="text-danger mb-3">Your role was not Found</h3>
+            <p class="mb-4">@ViewBag.Message</p>
+            <form asp-controller="Home" asp-action="Logout" method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-outline-danger">Logout</button>
+            </form>
+        </div>
+    </div>
+</div>
