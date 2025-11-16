@@ -1,10 +1,12 @@
-﻿@{
+﻿@model User
+
+@{
     ViewData["Title"] = "Home Page";
 }
 
 <div class="text-center">
     <h1 class="display-4">Dashboard</h1>
-    <p>Placeholder</p>
+    <p>Username: @Model.Username</p>
     
     <a asp-action="CreateEditExpense" class="btn btn-primary">Create new</a>
     <a asp-action="Expenses" class="btn btn-primary">Overview</a>

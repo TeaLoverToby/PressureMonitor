@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PressureMonitor")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+cb22fe4807f5c7b2313eaa57a872025976be2e70")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+17e9f89731cd2e438cca456a9f357be83dd07d2d")]
 [assembly: System.Reflection.AssemblyProductAttribute("PressureMonitor")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PressureMonitor")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

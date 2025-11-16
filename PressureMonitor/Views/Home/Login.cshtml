@@ -15,8 +15,8 @@
         </div>
     }
 
-
     <form asp-action="HandleLogin" method="post">
+        @Html.AntiForgeryToken()
         <div class="mb-3">
             <label asp-for="Username" class="form-label">Username</label>
             <input asp-for="Username" class="form-control form-control-lg" placeholder="Enter your username" required />

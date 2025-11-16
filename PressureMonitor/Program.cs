@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PressureMonitor.Models;
 
@@ -38,13 +39,33 @@ app.MapStaticAssets();
 
 app.MapControllerRoute(
         name: "default",
-        pattern: "{controller=Home}/{action=Index}/{id?}")
+        pattern: "{controller=User}/{action=Dashboard}/{id?}")
     .WithStaticAssets();
 
+// This makes sure that the database is created and also creates the admin user
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     dbContext.Database.EnsureCreated();
+
+    if (!await dbContext.Users.AnyAsync())
+    {
+        var adminUser = new User
+        {
+            Username = "admin",
+            Email = "admin@example.com",
+            UserType = UserType.Admin
+        };
+        var hasher = new PasswordHasher<User>();
+        adminUser.Password = hasher.HashPassword(adminUser, "admin");
+
+        dbContext.Users.Add(adminUser);
+        await dbContext.SaveChangesAsync();
+        
+        var adminEntity = new Admin { UserId = adminUser.Id };
+        dbContext.Admins.Add(adminEntity);
+        await dbContext.SaveChangesAsync();
+    }
 }
 
 app.Run();
