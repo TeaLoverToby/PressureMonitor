@@ -75,6 +75,63 @@ namespace PressureMonitor.Migrations
                     b.ToTable("Patients");
                 });
 
+            modelBuilder.Entity("PressureMonitor.Models.PressureFrame", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("AveragePressure")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double>("ContactAreaPercentage")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("DataJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MaxValue")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("MinValue")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PeakPressure")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PressureMapId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PressureMapId");
+
+                    b.ToTable("PressureFrames");
+                });
+
+            modelBuilder.Entity("PressureMonitor.Models.PressureMap", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PatientId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PatientId");
+
+                    b.ToTable("PressureMaps");
+                });
+
             modelBuilder.Entity("PressureMonitor.Models.User", b =>
                 {
                     b.Property<int>("Id")
@@ -132,6 +189,38 @@ namespace PressureMonitor.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("PressureMonitor.Models.PressureFrame", b =>
+                {
+                    b.HasOne("PressureMonitor.Models.PressureMap", "PressureMap")
+                        .WithMany("Frames")
+                        .HasForeignKey("PressureMapId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PressureMap");
+                });
+
+            modelBuilder.Entity("PressureMonitor.Models.PressureMap", b =>
+                {
+                    b.HasOne("PressureMonitor.Models.Patient", "Patient")
+                        .WithMany("PressureMaps")
+                        .HasForeignKey("PatientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Patient");
+                });
+
+            modelBuilder.Entity("PressureMonitor.Models.Patient", b =>
+                {
+                    b.Navigation("PressureMaps");
+                });
+
+            modelBuilder.Entity("PressureMonitor.Models.PressureMap", b =>
+                {
+                    b.Navigation("Frames");
                 });
 
             modelBuilder.Entity("PressureMonitor.Models.User", b =>
