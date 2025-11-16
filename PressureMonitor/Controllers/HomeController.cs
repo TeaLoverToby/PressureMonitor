@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.SqlServer.Query.Internal;
+using Microsoft.AspNetCore.Identity;
 using PressureMonitor.Models;
 
 namespace PressureMonitor.Controllers;
@@ -20,11 +20,44 @@ public class HomeController(ILogger<HomeController> logger, ApplicationDbContext
     // Cookies are used because it encrypts the data, if we stored via httpsession then someone could just lie about their username (not that it matters for this project)
     
     [Authorize]
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
-        var username = User.Identity?.Name ?? "User";
-        ViewData["Username"] = username;
-        return View();
+        // Get the user ID from the cookie
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            // If there is an isuse with the cookie, send back to login page
+            return RedirectToAction(nameof(Login));
+        }
+
+        // Load the user from the database and pass it to the view.
+        // TODO: Look into AsNoTracking() optimization
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+        {
+            // If the user no longer exists in the database, log them out
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return RedirectToAction(nameof(Login));
+        }
+        
+        return View(user);
+    }
+
+    [Authorize]
+    public async Task<IActionResult> Test()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdClaim, out var userId))
+        {
+            return RedirectToAction(nameof(Login));
+        }
+        var user = await context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        if (user == null)
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return RedirectToAction(nameof(Login));
+        }
+        return View(user);
     }
 
     [AllowAnonymous] // Unlike [Authorize], this means that anyone can access this page, even if no cookie
@@ -38,69 +71,24 @@ public class HomeController(ILogger<HomeController> logger, ApplicationDbContext
         return View();
     }
     
-    [AllowAnonymous]
+    // Only admins can access the register/create user page
+    [Authorize(Roles = "Admin")]
     public IActionResult Register()
     {
-        // If already logged in, redirect to Index
-        if (User.Identity?.IsAuthenticated == true)
-        {
-            return RedirectToAction(nameof(Index));
-        }
         return View();
     }
 
     [HttpPost]
-    [AllowAnonymous]
-    public async Task<IActionResult> HandleLogin(User? user)
-    {
-        if (user != null && !string.IsNullOrEmpty(user.Username) && !string.IsNullOrEmpty(user.Password))
-        {
-            try
-            {
-                // Check to see if there is a user with the given username and password
-                var existingUser = await context.Users.FirstOrDefaultAsync(u => u.Username == user.Username && u.Password == user.Password);
-                
-                if (existingUser != null)
-                {
-                    // Store the user information in the cookie
-                    var claims = new List<Claim>
-                    {
-                        new Claim(ClaimTypes.NameIdentifier, existingUser.Id.ToString()),
-                        new Claim(ClaimTypes.Name, existingUser.Username ?? "User"),
-                        new Claim(ClaimTypes.Email, existingUser.Email ?? "")
-                    };
-                    
-                    var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                    var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
-
-                    // Create the authentication cookie and store it in the user's browser
-                    await HttpContext.SignInAsync(
-                        CookieAuthenticationDefaults.AuthenticationScheme,
-                        claimsPrincipal,
-                        new AuthenticationProperties
-                        {
-                            IsPersistent = true,
-                            ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(30)
-                        });
-
-                    return RedirectToAction(nameof(Index)); // Go to main page
-                }
-
-                TempData["Error"] = "You entered an invalid username or password.";
-            } catch (Exception ex)
-            {
-                logger.LogError(ex, "Error during login");
-                return RedirectToAction(nameof(Login));
-            }
-        }
-
-        return RedirectToAction(nameof(Login));
-    }
-
-    [HttpPost]
-    [AllowAnonymous]
+    [Authorize(Roles = "Admin")]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> HandleRegister(User? user)
     {
+        // Only admins can create users
+        if (!User.IsInRole("Admin"))
+        {
+            return RedirectToAction(nameof(Index));
+        }
+
         // Check if the username / password was entered
         if (user != null && !string.IsNullOrEmpty(user.Username) && !string.IsNullOrEmpty(user.Password))
         {
@@ -114,50 +102,124 @@ public class HomeController(ILogger<HomeController> logger, ApplicationDbContext
 
             try
             {
+                // Hash the password before saving
+                var hasher = new PasswordHasher<User>();
+                var hashed = hasher.HashPassword(user, user.Password);
+                user.Password = hashed;
+
+                // REMOVE THIS EXPLANATION WHEN PROJECT IS DONE
+                // To explain this, the UserType enum controls what type of user it is.
+                // Each user type has a corresponding entity (Admin, Clinician, Patient).
+                // We need to create the corresponding entity - think of it like a foreign key.
+                // If we don't create this entity, then it will be null and when the user opens their dashboard, it will have a smelly error.
+                switch (user.UserType)
+                {
+                    case UserType.Admin:
+                        if (user.Admin != null) break;
+                        var admin = new Admin { User = user };
+                        user.Admin = admin;
+                        break;
+                    case UserType.Clinician:
+                        if (user.Clinician != null) break;
+                        var clinician = new Clinician { User = user };
+                        user.Clinician = clinician;
+                        break;
+                    case UserType.Patient:
+                        if (user.Patient != null) break;
+                        var patient = new Patient { User = user };
+                        user.Patient = patient;
+                        break;
+                }
+
                 // Attempt to create the user
                 await context.Users.AddAsync(user);
                 await context.SaveChangesAsync();
-                
-                // Store the user information in the cookie
-                var claims = new List<Claim>
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Name, user.Username ?? "User"),
-                    new Claim(ClaimTypes.Email, user.Email ?? "")
-                };
-                
-                var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-                var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
 
-                // Create the authentication cookie and store it in the user's browser
-                await HttpContext.SignInAsync(
-                    CookieAuthenticationDefaults.AuthenticationScheme,
-                    claimsPrincipal,
-                    new AuthenticationProperties
-                    {
-                        IsPersistent = true,
-                        ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(30)
-                    });
-
-                return RedirectToAction(nameof(Index)); // Go to main page
-            }
-            catch (DbUpdateException ex)
-            {
-                TempData["Error"] = "An error occurred when creating your account. Please try again.";
-                logger.LogError(ex, "Database update error during registration.");
+                TempData["Success"] = $"User '{user.Username}' created.";
                 return RedirectToAction(nameof(Register));
             }
-            catch (Exception ex) // This catches unexpected exceptions
+            catch (Exception ex)
             {
-                TempData["Error"] = "An error occurred when creating your account. Please try again.";
-                logger.LogError(ex, "Unexpected error during registration.");
+                logger.LogError(ex, "Error creating user by admin.");
+                TempData["Error"] = "An error occurred when creating the account.";
                 return RedirectToAction(nameof(Register));
             }
         }
-        // If this is reached, then the user forgot to enter a piece of data.
+
         TempData["Error"] = "You entered an invalid username or password.";
         return RedirectToAction(nameof(Register));
     }
+
+    [HttpPost]
+    [AllowAnonymous]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> HandleLogin(User? user)
+    {
+        if (user != null && !string.IsNullOrEmpty(user.Username) && !string.IsNullOrEmpty(user.Password))
+        {
+            try
+            {
+                var existingUser = await context.Users.FirstOrDefaultAsync(u => u.Username == user.Username);
+                
+                if (existingUser != null)
+                {
+                    // Verify the hashed password
+                    var hasher = new PasswordHasher<User>();
+                    var result = hasher.VerifyHashedPassword(existingUser, existingUser.Password ?? string.Empty, user.Password);
+                    if (result == PasswordVerificationResult.Failed)
+                    {
+                        TempData["Error"] = "You entered an invalid username or password.";
+                        return RedirectToAction(nameof(Login));
+                    }
+
+                    var claims = new List<Claim>
+                    {
+                        new (ClaimTypes.NameIdentifier, existingUser.Id.ToString()),
+                        new (ClaimTypes.Name, existingUser.Username ?? "User"),
+                        new (ClaimTypes.Email, existingUser.Email ?? ""),
+                        new ("UserType", existingUser.UserType.ToString())
+                    };
+
+                    // Set the claim role based on the UserType
+                    switch (existingUser.UserType)
+                    {
+                        case UserType.Clinician:
+                            claims.Add(new Claim(ClaimTypes.Role, "Clinician"));
+                            break;
+                        case UserType.Patient:
+                            claims.Add(new Claim(ClaimTypes.Role, "Patient"));
+                            break;
+                        case UserType.Admin:
+                            claims.Add(new Claim(ClaimTypes.Role, "Admin"));
+                            break;
+                    }
+                    
+                    var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+                    var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
+
+                    await HttpContext.SignInAsync(
+                        CookieAuthenticationDefaults.AuthenticationScheme,
+                        claimsPrincipal,
+                        new AuthenticationProperties
+                        {
+                            IsPersistent = true,
+                            ExpiresUtc = DateTimeOffset.UtcNow.AddMinutes(30)
+                        });
+
+                    return RedirectToAction("Dashboard", "User");
+                }
+
+                TempData["Error"] = "You entered an invalid username or password.";
+            } catch (Exception ex)
+            {
+                logger.LogError(ex, "Error during login");
+                return RedirectToAction(nameof(Login));
+            }
+        }
+
+        return RedirectToAction(nameof(Login));
+    }
+
 
     [HttpPost]
     [Authorize]
