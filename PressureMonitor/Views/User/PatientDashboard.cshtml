@@ -6,5 +6,213 @@
 <div class="text-center">
     <h1 class="display-4">Patient Dashboard</h1>
     <p>Username: @Model.User.Username</p>
-    <p>Not sure what to put here yet.</p>
+    
+    <div class="card mt-4">
+        <div class="card-header">Peak Pressure Over Selected Day</div>
+        <div class="card-body">
+            
+            <canvas id="peakChart"></canvas>
+            
+            <div class="mt-3 row g-3 align-items-end">
+                <div class="btn-group mb-2 justify-content-center" role="group">
+                    <button type="button" class="btn btn-outline-secondary range-btn" data-hours="1">Last 1h</button>
+                    <button type="button" class="btn btn-outline-secondary range-btn" data-hours="3">Last 3h</button>
+                    <button type="button" class="btn btn-outline-secondary range-btn" data-hours="6">Last 6h</button>
+                    <button type="button" class="btn btn-outline-secondary range-btn" data-hours="12">Last 12h</button>
+                    <button type="button" class="btn btn-outline-secondary range-btn" data-hours="24">Full day</button>
+                </div>
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-2">
+                        <label for="selectDay" class="form-label">Day:</label>
+                        <select id="selectDay" class="form-select"></select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="fromTime" class="form-label">From (HH:mm)</label>
+                        <input type="time" id="fromTime" class="form-control"/>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="toTime" class="form-label">To (HH:mm)</label>
+                        <input type="time" id="toTime" class="form-control"/>
+                    </div>
+                    <div class="col-md-3">
+                        <button id="applyCustomRange" class="btn btn-primary" type="button">Apply Range</button>
+                    </div>
+                    <div class="col-md-3">
+                        <button id="clearRange" class="btn btn-outline-secondary" type="button">Clear</button>
+                    </div>
+                </div>
+            </div>
+            <div id="rangeMeta" class="small text-muted mt-2"></div>
+        </div>
+    </div>
 </div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let peakChart;
+
+        // Get the days for which there is a pressure map for the patient
+        async function fetchDays() {
+            const res = await fetch('/File/GetMapDays');
+            if (!res.ok) return [];
+            // Fetches as json array of strings so tha
+            return await res.json();
+        }
+
+        // Fetch the peak data for the given day and time range selected.
+        // The data received is JSON and follows format of day, rangeStart, rangeEnd and points[]
+        async function fetchPeakData(day, options = {}) {
+            const params = new URLSearchParams({ day });
+            if (options.hoursBack) {
+                params.append('hoursBack', options.hoursBack);
+            }
+            if (options.from && options.to) {
+                params.append('from', options.from);
+                params.append('to', options.to);
+            }
+            // Calls the backend method and follows the parameters
+            const res = await fetch(`/File/getPressureGraphData?${params.toString()}`);
+            if (!res.ok) return null;
+            return await res.json();
+        }
+
+        /*
+            Creates the line chart
+            Labels - array of string labels for the X axis
+            data - array of numberic values for the Y axis
+         */
+        function buildChart(labels, data) {
+            const ctx = document.getElementById('peakChart').getContext('2d');
+
+            // If a previous one exists, we remove it first
+            if (peakChart) {
+                peakChart.destroy();
+            }
+
+            // Followed documentation from the Chart.js website
+            peakChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Peak Pressure',
+                        data,
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13,110,253,0.15)',
+                        tension: 0.35, // smoooothes it
+                        pointRadius: 0,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Time (by minutes)' }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Peak Pressure' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: true }
+                    }
+                }
+            });
+        }
+
+        // Updates the 
+        function updateRangeMeta(meta) {
+            const el = document.getElementById('rangeMeta');
+            if (!meta || !meta.points) {
+                el.textContent = '';
+                return;
+            }
+            const start = new Date(meta.rangeStart);
+            const end = new Date(meta.rangeEnd);
+            el.textContent = `Showing ${meta.points.length} minute points from ` + `${start.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} to ` + `${end.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
+        }
+
+        // Fetches and rebuilds the chart for a given day and optional range.
+        async function loadDay(day, options = {}) {
+            const result = await fetchPeakData(day, options);
+            if (!result || result.points.length === 0) {
+                buildChart([], []);
+                updateRangeMeta(null);
+                return;
+            }
+            // Convert timestamps to display labels (HH:mm) and extract values
+            const labels = result.points.map(p => new Date(p.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            const values = result.points.map(p => p.v);
+            buildChart(labels, values);
+            updateRangeMeta(result);
+        }
+
+        // Loads all the required buttons for day/time range selection
+        function updateButtons() {
+            // Quick range buttons
+            document.querySelectorAll('.range-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const hours = btn.getAttribute('data-hours');
+                    const day = document.getElementById('selectDay').value;
+                    loadDay(day, { hoursBack: hours });
+                });
+            });
+
+            // Custom range (From/To) in HH:mm for the selected day
+            document.getElementById('applyCustomRange').addEventListener('click', () => {
+                const fromVal = document.getElementById('fromTime').value;
+                const toVal = document.getElementById('toTime').value;
+                const day = document.getElementById('selectDay').value;
+                if (!fromVal || !toVal) return;
+                loadDay(day, { from: buildDateTime(day, fromVal), to: buildDateTime(day, toVal) });
+            });
+
+            // Clear the custom range back to the full day
+            document.getElementById('clearRange').addEventListener('click', () => {
+                document.getElementById('fromTime').value = '';
+                document.getElementById('toTime').value = '';
+                const day = document.getElementById('selectDay').value;
+                loadDay(day); // full day
+            });
+        }
+
+        // Just a util to combine yyyy-MM-dd and HH:mm into ISO format
+        function buildDateTime(dayStr, hhmm) {
+            return `${dayStr}T${hhmm}:00`;
+        }
+
+        // When the page is loaded, the available days are fetched and loaded into the select box
+        document.addEventListener('DOMContentLoaded', async () => {
+            const select = document.getElementById('selectDay');
+
+            const days = await fetchDays();
+            if (days.length === 0) {
+                select.innerHTML = '<option>No data found</option>';
+                buildChart([], []);
+                return;
+            }
+
+            // Adds all the available days to the option boxes
+            select.innerHTML = '';
+            days.forEach(d => {
+                const option = document.createElement('option');
+                option.value = d;
+                option.textContent = d;
+                select.appendChild(option);
+            });
+
+            // When the day button is clicked, we load the new day
+            select.addEventListener('change', () => loadDay(select.value));
+
+            // Reset the buttons incase there was prior data - unless we want to keep this?
+            updateButtons();
+
+            // Since this is the first time the page is being loaded, we just load the most recent day found
+            loadDay(days[0]);
+        });
+    </script>
+}
