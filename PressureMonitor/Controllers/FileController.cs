@@ -11,6 +11,10 @@ namespace PressureMonitor.Controllers;
 
 public class FileController(ILogger<FileController> logger, ApplicationDbContext context) : Controller
 {
+    // Constants
+    private const int FramesPerSecond = 15;
+        
+        
     [Authorize(Roles = "Patient")]
     public async Task<IActionResult> Test()
     {
@@ -19,8 +23,8 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         {
             return RedirectToAction("Login", "Home");
         }
-
-        // PressureMaps are included since we show data (will remove later) for the days
+        
+        // Gets the patient
         var patient = await context.Patients
             .Include(p => p.User)
             .Include(p => p.PressureMaps)
@@ -96,9 +100,8 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
 
             // So, what we want to assume is that a CSV file contains 32x32 matricies in a time-order
             // The software is 15FPS, so each second of data is 15 matricies.
-
-            const int FPS = 15;
-            const int TIME_DIFF_MILLIS = 1000 / FPS;
+            
+            const int TIME_DIFF_MILLIS = 1000 / FramesPerSecond;
 
             int currentRow = 0;
             int[][] currentMatrix = new int[32][];
@@ -206,6 +209,114 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             TempData["Error"] = "An error occurred while uploading the file.";
             return RedirectToAction(nameof(Test));
         }
+    }
+
+    [HttpGet]
+    [Authorize(Roles = "Patient")]
+    public async Task<IActionResult> getMapDays()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return Unauthorized();
+        }
+        var patient = await context.Patients
+            .Include(p => p.PressureMaps)
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+        if (patient == null) return NotFound();
+
+        var days = patient.PressureMaps
+            .OrderByDescending(pm => pm.Day)
+            .Select(pm => pm.Day.ToString("yyyy-MM-dd"))
+            .Distinct()
+            .ToList();
+        return Json(days);
+    }
+
+    [HttpGet]
+    [Authorize(Roles = "Patient")]
+    public async Task<IActionResult> getPressureGraphData(string? day, int? hoursBack, string? from, string? to)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        // Check if the user ID stored in the cookie is still valid
+        if (string.IsNullOrWhiteSpace(userIdStr) || !int.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        
+        if (string.IsNullOrWhiteSpace(day))
+        {
+            // Sends a HTTP 400 error - data was invalid.
+            return BadRequest("day parameter required (yyyy-MM-dd)");
+        }
+        // This shouldn't necessarily happen unless the user modifies the URL
+        if (!DateOnly.TryParse(day, out var dateOnly)) return BadRequest("Invalid day format");
+
+        // Get the patient and their pressure maps
+        var patient = await context.Patients
+            .Include(p => p.PressureMaps)
+            .ThenInclude(pm => pm.Frames)
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+        
+        if (patient == null) return NotFound();
+
+        // Check if there is a pressure map that matches the requested day
+        var map = patient.PressureMaps.FirstOrDefault(pm => pm.Day == dateOnly);
+        if (map == null) return Json(Array.Empty<object>()); // No data!
+
+        // This is th range that the user will filter by (initially the full day)
+        var dayStart = new DateTime(map.Day.Year, map.Day.Month, map.Day.Day, 0, 0, 0, DateTimeKind.Unspecified);
+        var dayEnd = dayStart.AddDays(1);
+
+        DateTime rangeStart = dayStart;
+        DateTime rangeEnd = dayEnd;
+
+        // Hours back means how many hours we go back from the end of the day
+        // FOr example, if hoursBack was 2, and day was 2025-10-18, then the range would be 2024-10-18 22:00 to 2024-10-18 00:00
+        if (hoursBack.HasValue && hoursBack.Value > 0)
+        {
+            rangeStart = dayEnd.AddHours(-hoursBack.Value);
+            if (rangeStart < dayStart) rangeStart = dayStart;
+        }
+        // This is for the from/to timestamps
+        else if (!string.IsNullOrWhiteSpace(from) || !string.IsNullOrWhiteSpace(to))
+        {
+            if (!string.IsNullOrWhiteSpace(from) && DateTime.TryParse(from, out var parsedFrom))
+            {
+                if (parsedFrom >= dayStart && parsedFrom < dayEnd) rangeStart = parsedFrom;
+            }
+            if (!string.IsNullOrWhiteSpace(to) && DateTime.TryParse(to, out var parsedTo))
+            {
+                if (parsedTo > rangeStart && parsedTo <= dayEnd) rangeEnd = parsedTo;
+            }
+        }
+
+        // Get the frames within the timestamp range
+        var filteredFrames = map.Frames
+            .Where(f => f.Timestamp >= rangeStart && f.Timestamp < rangeEnd)
+            .OrderBy(f => f.Timestamp)
+            .ToList();
+
+        // SO, the frames are grouped by minute, and for each minute we take the highest pressure between all frames in that minute
+        // This gives a list of points with t (time) and v (value)
+        // The time is then formatted with ISO format ("o")
+        var framePoints = filteredFrames
+              .GroupBy(f => new DateTime(f.Timestamp.Year, f.Timestamp.Month, f.Timestamp.Day, f.Timestamp.Hour, f.Timestamp.Minute, 0))
+              .Select(g => new { 
+                  t = g.Key.ToString("o"), 
+                  v = g.Max(f => f.PeakPressure) 
+              })
+              .ToList();
+          
+
+        // Returned as JSON so the graph can parse it
+        return Json(new {
+            day = map.Day.ToString("yyyy-MM-dd"),
+            rangeStart = rangeStart.ToString("o"),
+            rangeEnd = rangeEnd.ToString("o"),
+            points = framePoints
+        });
     }
 
 
