@@ -208,7 +208,7 @@ public class HomeController(ILogger<HomeController> logger, ApplicationDbContext
 
                     return RedirectToAction("Dashboard", "User");
                 }
-
+                
                 TempData["Error"] = "You entered an invalid username or password.";
             } catch (Exception ex)
             {
