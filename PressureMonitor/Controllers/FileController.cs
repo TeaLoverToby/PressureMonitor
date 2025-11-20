@@ -235,6 +235,43 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
 
     [HttpGet]
     [Authorize(Roles = "Patient")]
+    public async Task<IActionResult> getAveragePressureMap(string? day)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        // Check if the user ID stored in the cookie is still valid
+        if (string.IsNullOrWhiteSpace(userIdStr) || !int.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized();
+        }
+        if (string.IsNullOrWhiteSpace(day))
+        {
+            // Sends a HTTP 400 error - data was invalid.
+            return BadRequest("day parameter required (yyyy-MM-dd)");
+        }
+        
+        // This shouldn't necessarily happen unless the user modifies the URL
+        if (!DateOnly.TryParse(day, out var dateOnly)) return BadRequest("Invalid day format");
+
+        // Get the patient and their pressure maps
+        var patient = await context.Patients
+            .Include(p => p.PressureMaps)
+            .ThenInclude(pm => pm.Frames)
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+        
+        if (patient == null) return NotFound();
+
+        // Check if there is a pressure map that matches the requested day
+        var map = patient.PressureMaps.FirstOrDefault(pm => pm.Day == dateOnly);
+        if (map == null) return Json(Array.Empty<object>()); // No data!
+        
+        return Json(new
+        {
+            averageMap = map.GetAveragePressureMap()
+        });
+    }
+
+    [HttpGet]
+    [Authorize(Roles = "Patient")]
     public async Task<IActionResult> getPressureGraphData(string? day, int? hoursBack, string? from, string? to)
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
