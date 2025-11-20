@@ -45,11 +45,49 @@
             <div id="rangeMeta" class="small text-muted mt-2"></div>
         </div>
     </div>
+    
+        <div class="card mt-4">
+        <div class="card-header">
+            <h3>Average Pressure Heat Map</h3>
+        </div>
+        <div class="card-body">
+            <div id="heatmapContainer">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5>Average Pressure Map</h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="small">Low (0)</span>
+                        <div style="width: 200px; height: 20px; background: linear-gradient(to right, hsl(240, 100%, 50%), hsl(180, 100%, 50%), hsl(120, 100%, 50%), hsl(60, 100%, 50%), hsl(0, 100%, 50%));"></div>
+                        <span class="small">High (256)</span>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <canvas id="heatmapCanvas" style="border: 1px solid #ccc; max-width: 100%; height: auto;"></canvas>
+                </div>
+                <div class="mt-3">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <strong>Min Value:</strong> <span id="minValue">-</span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Max Value:</strong> <span id="maxValue">-</span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Average:</strong> <span id="avgValue">-</span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Hover Value:</strong> <span id="hoverValue">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        // Graph script
         let peakChart;
 
         // Get the days for which there is a pressure map for the patient
@@ -149,6 +187,9 @@
             const values = result.points.map(p => p.v);
             buildChart(labels, values);
             updateRangeMeta(result);
+            
+            // Load the heat map for the selected day
+            loadHeatmap(day);
         }
 
         // Loads all the required buttons for day/time range selection
@@ -214,5 +255,121 @@
             // Since this is the first time the page is being loaded, we just load the most recent day found
             loadDay(days[0]);
         });
+    </script>
+    
+    <script>
+        // Heatmap script
+        const heatmapCanvas = document.getElementById('heatmapCanvas');
+        const heatmapCtx = heatmapCanvas.getContext('2d');
+        
+        const MAX_PRESSURE_VALUE = 256;
+        const GRID_SIZE = 32;
+        const CELL_PIXEL_SIZE = 15; // pixels per cell
+        
+        heatmapCanvas.width = GRID_SIZE * CELL_PIXEL_SIZE;
+        heatmapCanvas.height = GRID_SIZE * CELL_PIXEL_SIZE;
+        
+        // TODO: Might change the color wheel selection later - looks a bit ugly
+        
+        // Color mapping function - converts value (0-256) to HSL Color
+        // HSL from Blue (240) to Red (0)
+        function translateColor(pressure) {
+            const adjusted = Math.min(pressure / MAX_PRESSURE_VALUE, 1.0);
+            const hue = Math.floor(240 * (1 - adjusted));
+            return `hsl(${hue}, 100%, 50%)`;
+        }
+        
+        // Draw the heatmap
+        function drawHeatmap(data) {
+            // Clear prior drawing (incase there was a prior heat map)
+            heatmapCtx.clearRect(0, 0, heatmapCanvas.width, heatmapCanvas.height);
+            
+            if (!data || data.length !== 32) {
+                console.error('This data is not valid for rendering, must be a 32x32 matrix.');
+                return;
+            }
+
+            // We know that the value range is 0 - 256 so we can predefine min/max
+            let min = 257;
+            let max = -1;
+            
+            let sum = 0;
+            let count = 0;
+            
+            // Iterate through cells to find min, max, average
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    const value = data[row][col];
+                    min = Math.min(min, value);
+                    max = Math.max(max, value);
+                    sum += value;
+                    count++;
+                }
+            }
+            
+            const average = Math.round(sum / count);
+            
+            // Updates the display stats
+            document.getElementById('minValue').textContent = min;
+            document.getElementById('maxValue').textContent = max;
+            document.getElementById('avgValue').textContent = average;
+            
+            // Draws each heat map cell
+            for (let row = 0; row < GRID_SIZE; row++) {
+                for (let col = 0; col < GRID_SIZE; col++) {
+                    const value = data[row][col];
+                    
+                    heatmapCtx.fillStyle = translateColor(value);
+                    heatmapCtx.fillRect(col * CELL_PIXEL_SIZE, row * CELL_PIXEL_SIZE, CELL_PIXEL_SIZE, CELL_PIXEL_SIZE);
+                }
+            }
+            
+            // Cache the matrix data for hover logic
+            heatmapCanvas.heatmapData = data;
+        }
+        
+        // Handle mouse hover to show cell value
+        heatmapCanvas.addEventListener('mousemove', (e) => {
+            if (!heatmapCanvas.heatmapData) return;
+            
+            // We need to check if the mouse location is within the canvas
+            const rect = heatmapCanvas.getBoundingClientRect();
+            const scaleX = heatmapCanvas.width / rect.width;
+            const scaleY = heatmapCanvas.height / rect.height;
+            
+            // Get mouse position relative to canvas
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+            
+            // By dividing, we can find the cell indices
+            const col = Math.floor(x / CELL_PIXEL_SIZE);
+            const row = Math.floor(y / CELL_PIXEL_SIZE);
+            
+            // Ensure that the indicies are within the bounds
+            if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
+                // Check the matrix data for the pressure value
+                const value = heatmapCanvas.heatmapData[row][col];
+                document.getElementById('hoverValue').textContent = `${value} (Row: ${row}, Col: ${col})`;
+            }
+        });
+        
+        heatmapCanvas.addEventListener('mouseleave', () => {
+            document.getElementById('hoverValue').textContent = '-';
+        });
+        
+        // Load heatmap for the given day
+        async function loadHeatmap(day) {
+            try {
+                const response = await fetch(`/File/getAveragePressureMap?day=${day}`);
+                const result = await response.json();
+                
+                // Gets the matrix data of the average map
+                if (result && result.averageMap) {
+                    drawHeatmap(result.averageMap);
+                }
+            } catch (error) {
+                console.error('Error loading heatmap:', error);
+            }
+        }
     </script>
 }
