@@ -17,6 +17,43 @@ public class PressureMap
     
     public DateOnly Day { get; set; }
     public List<PressureFrame> Frames { get; set; } = [];
+    
+    public int[][] GetAveragePressureMap()
+    {
+        var averageMap = new int[32][];
+        for (var i = 0; i < 32; i++)
+        {
+            averageMap[i] = new int[32];
+        }
+
+        if (Frames.Count == 0)
+        {
+            return averageMap;
+        }
+
+        foreach (var frame in Frames)
+        {
+            var data = frame.Data;
+            for (var i = 0; i < 32; i++)
+            {
+                for (var j = 0; j < 32; j++)
+                {
+                    averageMap[i][j] += data[i][j];
+                }
+            }
+        }
+
+        // Divide each cell by the number of frames to get the average
+        for (var i = 0; i < 32; i++)
+        {
+            for (var j = 0; j < 32; j++)
+            {
+                averageMap[i][j] /= Frames.Count;
+            }
+        }
+
+        return averageMap;
+    }
 
 }
 
