@@ -25,7 +25,7 @@
             </div>
         }
         
-        <form asp-action="UploadFile" asp-controller="File" method="post" enctype="multipart/form-data">
+        <form asp-action="Upload" asp-controller="PressureMap" method="post" enctype="multipart/form-data">
             @Html.AntiForgeryToken()
             <div class="form-group">
                 <input type="file" name="file" class="form-control" accept=".csv" />
@@ -47,6 +47,7 @@
                     <tr>
                         <th>Date</th>
                         <th>Frame Count</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -55,6 +56,9 @@
                     <tr>
                         <td>@map.Day.ToString("yyyy-MM-dd")</td>
                         <td>@map.Frames.Count</td>
+                        <td>
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Patient" asp-action="ViewPressureMap" asp-route-day="@map.Day.ToString("yyyy-MM-dd")">View</a>
+                        </td>
                     </tr>
                 }
                 </tbody>
