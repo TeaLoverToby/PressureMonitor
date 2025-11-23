@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -200,6 +201,50 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             rangeEnd = rangeEnd.ToString("o"),
             points = framePoints
         });
+    }
+    [HttpGet]
+    public async Task<IActionResult> DownloadCsv(string day)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userIdStr) || !int.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        if (string.IsNullOrWhiteSpace(day) || !DateOnly.TryParse(day, out var dateOnly))
+        {
+            return BadRequest("Invalid day format");
+        }
+
+        var patient = await context.Patients
+            .Include(p => p.PressureMaps)
+            .ThenInclude(pm => pm.Frames)
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (patient == null) return NotFound();
+
+        var map = patient.PressureMaps.FirstOrDefault(pm => pm.Day == dateOnly);
+        if (map == null) return NotFound("No data found for this day.");
+
+        var frames = map.Frames.OrderBy(f => f.Timestamp).ToList();
+
+        var sb = new StringBuilder();
+        foreach (var frame in frames)
+        {
+            // Check if Data is null, though it shouldn't be for valid frames
+            if (frame.Data == null) continue;
+
+            for (int r = 0; r < 32; r++)
+            {
+                // Join the row values with commas
+                sb.AppendLine(string.Join(",", frame.Data[r]));
+            }
+        }
+
+        var fileName = $"{patient.Id}_{dateOnly:yyyyMMdd}.csv";
+        var fileBytes = Encoding.UTF8.GetBytes(sb.ToString());
+
+        return File(fileBytes, "text/csv", fileName);
     }
 }
 
