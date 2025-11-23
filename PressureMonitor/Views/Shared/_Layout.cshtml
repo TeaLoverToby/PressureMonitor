@@ -21,30 +21,30 @@
             <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                 <ul class="navbar-nav flex-grow-1 justify-content-start">
                     <li class="nav-item">
-                        <a class="nav-link text-dark" asp-area="" asp-controller="User" asp-action="Dashboard">Home</a>
+                        <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="Dashboard">Home</a>
                     </li>
                     
                     @if (User.IsInRole("Admin"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Register">Create User</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="Register">Create User</a>
                         </li>
                     }
                     
                     @if (User.IsInRole("Clinician"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="User" asp-action="ClinicianDashboard">My Dashboard</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Clinician" asp-action="Index">My Dashboard</a>
                         </li>
                     }
                     
                     @if (User.IsInRole("Patient"))
                     {
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="User" asp-action="PatientDashboard">My Records</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Patient" asp-action="Index">My Records</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="File" asp-action="Test">Test</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Patient" asp-action="Upload">Test</a>
                         </li>
                     }
                 </ul>
@@ -56,7 +56,7 @@
                             <span class="navbar-text">@User.Identity.Name</span>
                         </li>
                         <li class="nav-item">
-                            <form asp-area="" asp-controller="Home" asp-action="Logout" method="post" class="form-inline">
+                            <form asp-area="" asp-controller="Account" asp-action="Logout" method="post" class="form-inline">
                                 <button type="submit" class="nav-link btn btn-link text-dark">Logout</button>
                             </form>
                         </li>
@@ -64,7 +64,7 @@
                     else
                     {
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Login">Login</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Account" asp-action="Login">Login</a>
                         </li>
                     }
                 </ul>

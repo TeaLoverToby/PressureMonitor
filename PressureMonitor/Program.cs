@@ -13,8 +13,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
-        options.LoginPath = "/Home/Login"; // If the user is not authenticated, then they are redirected to the login page
-        options.LogoutPath = "/Home/Logout";
+        options.LoginPath = "/Account/Login"; // If the user is not authenticated, then they are redirected to the login page
+        options.LogoutPath = "/Account/Logout";
         options.ExpireTimeSpan = TimeSpan.FromMinutes(30);
         options.SlidingExpiration = true;
         options.Cookie.HttpOnly = true;
@@ -39,7 +39,7 @@ app.MapStaticAssets();
 
 app.MapControllerRoute(
         name: "default",
-        pattern: "{controller=User}/{action=Dashboard}/{id?}")
+        pattern: "{controller=Account}/{action=Login}/{id?}")
     .WithStaticAssets();
 
 // This makes sure that the database is created and also creates the admin user
