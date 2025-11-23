@@ -18,6 +18,7 @@ public class PressureMap
     public DateOnly Day { get; set; }
     public List<PressureFrame> Frames { get; set; } = [];
     
+    // This might be redundant now as we have a version of this that supports ranges in the controller
     public int[][] GetAveragePressureMap()
     {
         var averageMap = new int[32][];
