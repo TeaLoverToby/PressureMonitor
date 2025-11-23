@@ -87,6 +87,7 @@
     <div class="mt-4">
         <a asp-action="Index" class="btn btn-secondary">Back to Dashboard</a>
         <a asp-controller="File" asp-action="DownloadCsv" asp-route-day="@Model.Day.ToString("yyyy-MM-dd")" class="btn btn-primary ms-2">Download CSV</a>
+        <a asp-controller="File" asp-action="DownloadReport" asp-route-day="@Model.Day.ToString("yyyy-MM-dd")" class="btn btn-info ms-2">Download Report</a>
     </div>
 </div>
 

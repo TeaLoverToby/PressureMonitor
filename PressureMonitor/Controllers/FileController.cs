@@ -249,5 +249,137 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         var fileBytes = Encoding.UTF8.GetBytes(sb.ToString());
         return File(fileBytes, "text/csv", fileName);
     }
+
+    [HttpGet]
+    public async Task<IActionResult> DownloadReport(string day)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userIdStr) || !int.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        if (string.IsNullOrWhiteSpace(day) || !DateOnly.TryParse(day, out var dateOnly))
+        {
+            return BadRequest("Invalid day format");
+        }
+
+        // Get the patient ID, we do not include pressuremaps for the sake of performance
+        var patientId = await context.Patients
+            .Where(p => p.UserId == userId)
+            .Select(p => p.Id)
+            .FirstOrDefaultAsync();
+
+        if (patientId == 0) return NotFound();
+
+        // Get the pressure map for the given day
+        var map = await context.PressureMaps
+            .Include(pm => pm.Frames)
+            .FirstOrDefaultAsync(pm => pm.PatientId == patientId && pm.Day == dateOnly);
+
+        if (map == null) return NotFound("No data found for this day.");
+
+        // Order the frames by timestamp (oldest -> newest)
+        var frames = map.Frames.OrderBy(f => f.Timestamp).ToList();
+        if (frames.Count == 0)
+        {
+            // If no frames, we will just build a report with no data
+             return File(Encoding.UTF8.GetBytes("No data available for this day."), "text/plain", $"Report_{dateOnly:yyyyMMdd}.txt");
+        }
+
+        // Calculate the statistics for the report
+        int maxPressure = 0;
+        int minPressure = int.MaxValue;
+        int maxPeakPressure = 0;
+        double totalContactArea = 0;
+        long totalPressureSum = 0;
+        long totalCellCount = 0;
+        
+        // To find high pressure regions, we'll average each cell across all frames
+        var averageMap = new long[32, 32];
+
+        foreach (var frame in frames)
+        {
+            if (frame.MaxValue > maxPressure) maxPressure = frame.MaxValue;
+            if (frame.MinValue < minPressure) minPressure = frame.MinValue;
+            if (frame.PeakPressure > maxPeakPressure) maxPeakPressure = frame.PeakPressure;
+            
+            totalContactArea += frame.ContactAreaPercentage;
+
+            // We cannot really avoid deserialising the matrix data as we need to access the cells
+            
+            // TODO: We might be able to store the average data in each frame so we don't have to do this
+            var data = frame.Data;
+            if (data == null) continue;
+
+            // Iterate through the cells to calculate total pressure         
+            for (int r = 0; r < 32; r++)
+            {
+                for (int c = 0; c < 32; c++)
+                {
+                    int val = data[r][c];
+                    totalPressureSum += val;
+                    totalCellCount++;
+                    averageMap[r, c] += val;
+                }
+            }
+        }
+
+        double overallAverage = totalCellCount > 0 ? (double)totalPressureSum / totalCellCount : 0;
+        double averageContactArea = frames.Count > 0 ? totalContactArea / frames.Count : 0;
+        
+        var startTime = frames.First().Timestamp;
+        var endTime = frames.Last().Timestamp;
+        var duration = endTime - startTime;
+
+        // Identify top 10 high pressure regions (cells)
+        const int topRegionsCount = 10;
+        // Turns out that c# has tuple support!
+        var cellAverages = new List<(int r, int c, double avg)>();
+
+        for (int r = 0; r < 32; r++)
+        {
+            for (int c = 0; c < 32; c++)
+            {
+                // Calculate the average pressure for each cell
+                double avg = (double)averageMap[r, c] / frames.Count;
+                cellAverages.Add((r, c, avg));
+            }
+        }
+
+        var topRegions = cellAverages.OrderByDescending(x => x.avg).Take(topRegionsCount).ToList();
+
+        var sb = new StringBuilder();
+        sb.AppendLine($"Pressure Map Report for {dateOnly:yyyy-MM-dd}");
+        sb.AppendLine("========================================");
+        sb.AppendLine($"Patient ID: {patientId}");
+        sb.AppendLine($"Pressure Map ID: {map.Id}");
+        sb.AppendLine($"Report Generated: {DateTime.Now}");
+        sb.AppendLine("========================================");
+        sb.AppendLine($"Recording Start: {startTime:HH:mm:ss}");
+        sb.AppendLine($"Recording End: {endTime:HH:mm:ss}");
+        sb.AppendLine($"Total Duration: {duration}");
+        sb.AppendLine($"Total Frames Recorded: {frames.Count}");
+        sb.AppendLine("----------------------------------------");
+        sb.AppendLine($"Highest Pressure Found: {maxPressure}");
+        sb.AppendLine($"Lowest Pressure Found: {minPressure}");
+        sb.AppendLine($"Max Peak Pressure Index: {maxPeakPressure}");
+        sb.AppendLine($"Average Pressure: {overallAverage:F2}");
+        sb.AppendLine($"Average Contact Area: {averageContactArea:F2}%");
+        sb.AppendLine();
+        sb.AppendLine($"High Pressure Regions (Top {topRegionsCount} Average Cells):");
+        sb.AppendLine("----------------------------------------");
+        
+        int index = 1;
+        foreach (var region in topRegions)
+        {
+            sb.AppendLine($"{index++}: Row: {region.r}, Column: {region.c} - Average Pressure: {region.avg:F2}");
+        }
+
+        // TODO: Need to add some sort of alert or specific details for the report
+
+        var fileBytes = Encoding.UTF8.GetBytes(sb.ToString());
+        return File(fileBytes, "text/plain", $"Report_{dateOnly:yyyyMMdd}.txt");
+    }
 }
 
