@@ -216,6 +216,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             return BadRequest("Invalid day format");
         }
 
+        // Get the patient and their pressure maps
         var patient = await context.Patients
             .Include(p => p.PressureMaps)
             .ThenInclude(pm => pm.Frames)
@@ -223,12 +224,15 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
 
         if (patient == null) return NotFound();
 
+        // Find the pressure map for the specified day
         var map = patient.PressureMaps.FirstOrDefault(pm => pm.Day == dateOnly);
         if (map == null) return NotFound("No data found for this day.");
 
+        // Order the frames by their timestamp (ascending)
         var frames = map.Frames.OrderBy(f => f.Timestamp).ToList();
 
         var sb = new StringBuilder();
+        // Iterate through each frame and append its data to the string builder
         foreach (var frame in frames)
         {
             // Check if Data is null, though it shouldn't be for valid frames
@@ -243,7 +247,6 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
 
         var fileName = $"{patient.Id}_{dateOnly:yyyyMMdd}.csv";
         var fileBytes = Encoding.UTF8.GetBytes(sb.ToString());
-
         return File(fileBytes, "text/csv", fileName);
     }
 }
