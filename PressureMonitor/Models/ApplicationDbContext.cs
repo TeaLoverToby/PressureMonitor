@@ -8,10 +8,12 @@ public class ApplicationDbContext : DbContext
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) {}
     
     public DbSet<User> Users { get; set; }
+    
     public DbSet<Clinician> Clinicians { get; set; }
     public DbSet<Patient> Patients { get; set; }
     public DbSet<Admin> Admins { get; set; }
     public DbSet<PressureMap> PressureMaps { get; set; }
+    
     public DbSet<PressureFrame> PressureFrames { get; set; }
 
     // This method allows us to configure the relationships between the entities (e.g foreign keys, cardinality and that sort of thing)

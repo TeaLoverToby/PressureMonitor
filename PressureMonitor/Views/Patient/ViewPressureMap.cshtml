@@ -1,93 +1,406 @@
 ﻿@model PressureMonitor.Models.PressureMap
 @{
-    ViewData["Title"] = "Pressure Map - " + Model.Day.ToString("yyyy-MM-dd");
+    ViewData["Title"] = "Pressure Map - " + Model.Day.ToString("MM/dd/yyyy");
+    var formattedDay = Model.Day.ToString("MM/dd/yyyy");
 }
 
-<div class="container-fluid">
-    <h1 class="display-4 text-center">Pressure Map</h1>
-    <p class="text-center">Day: @Model.Day.ToString("yyyy-MM-dd")</p>
+<style>
+    .page-title {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #8B4513;
+        margin-bottom: 20px;
+    }
     
-    <div class="card mt-4" style="border-bottom-left-radius: 0; border-bottom-right-radius: 0; border-bottom: 0;">
-        <div class="card-body">
-            <div style="display: grid; gap: 8px; grid-template-columns: repeat(5, 1fr); margin-bottom: 8px;">
-                <button type="button" class="btn btn-outline-secondary range-btn" data-hours="1">Last 1h</button>
-                <button type="button" class="btn btn-outline-secondary range-btn" data-hours="3">Last 3h</button>
-                <button type="button" class="btn btn-outline-secondary range-btn" data-hours="6">Last 6h</button>
-                <button type="button" class="btn btn-outline-secondary range-btn" data-hours="12">Last 12h</button>
-                <button type="button" class="btn btn-outline-secondary range-btn" data-hours="24">Full day</button>
-            </div>
-            <div class="row g-2 align-items-end">
-                <div class="col-md-3">
-                    <label for="fromTime" class="form-label">From (HH:mm)</label>
-                    <input type="time" id="fromTime" class="form-control"/>
-                </div>
-                <div class="col-md-3">
-                    <label for="toTime" class="form-label">To (HH:mm)</label>
-                    <input type="time" id="toTime" class="form-control"/>
-                </div>
-                <div class="col-md-3">
-                    <button id="applyCustomRange" class="btn btn-primary" type="button">Apply Range</button>
-                </div>
-                <div class="col-md-3">
-                    <button id="clearRange" class="btn btn-outline-secondary" type="button">Clear</button>
-                </div>
-            </div>
-            <div id="rangeMeta" class="small text-muted mt-2"></div>
-        </div>
+    .time-filter-section {
+        display: flex;
+        gap: 0;
+        margin-bottom: 20px;
+        border: 2px solid #333;
+    }
+    .time-btn {
+        flex: 1;
+        padding: 10px 15px;
+        border: none;
+        border-right: 2px solid #333;
+        background: #fff;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background 0.2s;
+    }
+    .time-btn:last-child {
+        border-right: none;
+    }
+    .time-btn:hover {
+        background: #f0f0f0;
+    }
+    .time-btn.active {
+        background: #e0e0e0;
+        font-weight: bold;
+    }
+    
+    .main-layout {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+    }
+    @@media (max-width: 992px) {
+        .main-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .left-column {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .data-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+    @@media (max-width: 768px) {
+        .data-row {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    .heatmap-section, .graph-section {
+        border: 2px solid #333;
+        padding: 10px;
+        position: relative;
+    }
+    .graph-section {
+        display: flex;
+        flex-direction: column;
+    }
+    .graph-container {
+        flex: 1;
+        position: relative;
+        min-height: 250px;
+    }
+    .section-title {
+        font-weight: bold;
+        margin-bottom: 10px;
+        font-size: 0.95rem;
+    }
+    .heatmap-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .heatmap-legend {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.75rem;
+    }
+    .legend-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+    .legend-dot.cyan { background: hsl(180, 100%, 50%); }
+    .legend-dot.green { background: hsl(120, 100%, 50%); }
+    .legend-dot.yellow { background: hsl(60, 100%, 50%); }
+    .legend-dot.red { background: hsl(0, 100%, 50%); }
+    
+    .metrics-section {
+        border: 2px solid #333;
+        padding: 15px;
+    }
+    .metrics-title {
+        font-weight: bold;
+        margin-bottom: 10px;
+    }
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+    }
+    .metric-item {
+        font-size: 0.85rem;
+    }
+    .help-icon {
+        width: 14px;
+        height: 14px;
+        border: 1px solid #333;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
+        cursor: help;
+    }
+    
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 15px;
+    }
+    .action-btn {
+        padding: 10px 20px;
+        border: 2px solid #333;
+        font-weight: bold;
+        cursor: pointer;
+        text-align: center;
+        text-decoration: none;
+        color: #000;
+    }
+    .action-btn:hover {
+        opacity: 0.9;
+    }
+    .btn-download { background: #fff; }
+    .btn-flag { background: #90EE90; }
+    .btn-edit { background: #FFD700; }
+    .btn-delete { background: #FF6347; color: #fff; }
+    
+    .comments-section {
+        border: 2px solid #333;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    .comments-title {
+        font-weight: bold;
+        text-align: center;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #333;
+        margin-bottom: 15px;
+    }
+    .comments-list {
+        flex: 1;
+        overflow-y: auto;
+        margin-bottom: 15px;
+    }
+    .comment-item {
+        margin-bottom: 15px;
+    }
+    .comment-author {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 5px;
+    }
+    .author-icon {
+        width: 24px;
+        height: 24px;
+        border: 1px solid #333;
+        border-radius: 50%;
+    }
+    .comment-text {
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        background: #f9f9f9;
+        font-size: 0.85rem;
+        margin-bottom: 5px;
+    }
+    .reply-btn {
+        padding: 5px 15px;
+        border: 2px solid #333;
+        background: #fff;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+    .reply-btn:hover {
+        background: #f0f0f0;
+    }
+    
+    .new-comment-section {
+        border-top: 1px solid #ccc;
+        padding-top: 15px;
+    }
+    .new-comment-section label {
+        font-size: 0.85rem;
+        margin-bottom: 5px;
+        display: block;
+    }
+    .new-comment-section textarea {
+        width: 100%;
+        height: 60px;
+        border: 1px solid #ccc;
+        padding: 8px;
+        margin-bottom: 10px;
+        resize: none;
+    }
+    .comment-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .flag-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.85rem;
+    }
+    .flag-checkbox a {
+        color: #FF6347;
+        text-decoration: underline;
+    }
+    .send-btn {
+        padding: 8px 25px;
+        border: 2px solid #333;
+        background: #fff;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .send-btn:hover {
+        background: #f0f0f0;
+    }
+    
+    /* Loading spinner styles */
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+    }
+    .loading-overlay.hidden {
+        display: none;
+    }
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #8B4513;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @@keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+</style>
+
+<div class="container-fluid">
+    <h1 class="page-title">Viewing Pressure Map: @formattedDay</h1>
+    
+    <!-- Time Filter Buttons -->
+    <div class="time-filter-section">
+        <button type="button" class="time-btn range-btn" data-hours="1">Last 1h</button>
+        <button type="button" class="time-btn range-btn" data-hours="3">Last 3h</button>
+        <button type="button" class="time-btn range-btn" data-hours="6">Last 6h</button>
+        <button type="button" class="time-btn range-btn" data-hours="12">Last 12h</button>
+        <button type="button" class="time-btn range-btn active" data-hours="24">Full Day</button>
     </div>
     
-    <div class="row g-3" style="margin-top: 0;">
-        <!-- Heatmap on Left -->
-        <div class="col-lg-5">
-            <div class="card" style="height: 100%; border-top-left-radius: 0;">
-                <div class="card-header">
-                    <h5>Average Pressure Heat Map</h5>
-                </div>
-                <div class="card-body" style="display: flex; flex-direction: column;">
-                    <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 8px;">
-                        <span class="small" style="margin-right: 8px;">Low (0)</span>
-                        <div style="width: 150px; height: 15px; background: linear-gradient(to right, hsl(240, 100%, 50%), hsl(180, 100%, 50%), hsl(120, 100%, 50%), hsl(60, 100%, 50%), hsl(0, 100%, 50%));"></div>
-                        <span class="small" style="margin-left: 8px;">High (256)</span>
+    <div class="main-layout">
+        <!-- Left Column -->
+        <div class="left-column">
+            <!-- Heatmap and Graph Row -->
+            <div class="data-row">
+                <!-- Heatmap Section -->
+                <div class="heatmap-section">
+                    <div class="loading-overlay hidden" id="heatmapLoading">
+                        <div class="spinner"></div>
                     </div>
-                    <div class="text-center" style="flex-grow: 1; display: flex; align-items: center; justify-content: center;">
-                        <h5 id="hidden-canvas-error" hidden>An error occurred loading the heat map for this time range.</h5>
-                        <canvas id="heatmapCanvas" style="border: 1px solid #ccc;"></canvas>
-                    </div>
-                    <div class="mt-3">
-                        <div class="row small">
-                            <div class="col-6">
-                                <div><strong>Min Pressure:</strong> <span id="minValue">-</span></div>
-                                <div><strong>Max Pressure:</strong> <span id="maxValue">-</span></div>
-                                <div><strong>Average Pressure:</strong> <span id="avgValue">-</span></div>
-                            </div>
-                            <div class="col-6">
-                                <div><strong>Pressure Range:</strong> <span id="pressureRange">-</span></div>
-                                <div><strong>Hover Data:</strong> <span id="hoverValue">-</span></div>
-                                <div><strong>Contact Area:</strong> <span id="contactArea">-</span></div>
-                            </div>
+                    <div class="section-title">Heat Map Diagram - Average Pressure</div>
+                    <div class="heatmap-container">
+                        <canvas id="heatmapCanvas"></canvas>
+                        <h5 id="hidden-canvas-error" hidden style="color: #999; font-size: 0.9rem;">No data for this time range.</h5>
+                        <div class="heatmap-legend">
+                            <div class="legend-item"><span class="legend-dot cyan"></span> 0-64</div>
+                            <div class="legend-item"><span class="legend-dot green"></span> 65-128</div>
+                            <div class="legend-item"><span class="legend-dot yellow"></span> 129-192</div>
+                            <div class="legend-item"><span class="legend-dot red"></span> 193-255</div>
                         </div>
+                    </div>
+                </div>
+                
+                <!-- Graph Section -->
+                <div class="graph-section">
+                    <div class="loading-overlay hidden" id="graphLoading">
+                        <div class="spinner"></div>
+                    </div>
+                    <div class="section-title">Peak Pressure Graph</div>
+                    <div class="graph-container">
+                        <canvas id="peakChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Metrics and Actions Row -->
+            <div class="data-row">
+                <!-- Key Metrics -->
+                <div class="metrics-section">
+                    <div class="metrics-title">Key Metrics</div>
+                    <div class="metrics-grid">
+                        <div class="metric-item">Lowest Pressure: <span id="minValue">-</span></div>
+                        <div class="metric-item"><span class="help-icon">?</span> Contact Area: <span id="contactArea">-</span></div>
+                        <div class="metric-item">Highest Pressure: <span id="maxValue">-</span></div>
+                        <div class="metric-item"><span class="help-icon">?</span> Peak Pressure: <span id="peakPressure">-</span></div>
+                        <div class="metric-item">Average Pressure: <span id="avgValue">-</span></div>
+                        <div class="metric-item">Duration: <span id="duration">-</span></div>
+                        <div class="metric-item">Pressure Range: <span id="pressureRange">-</span></div>
+                        <div class="metric-item">Hover Data: <span id="hoverValue">-</span></div>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="metrics-section">
+                    <div class="action-buttons">
+                        <a asp-controller="File" asp-action="DownloadCsv" asp-route-day="@Model.Day.ToString("yyyy-MM-dd")" class="action-btn btn-download">DOWNLOAD</a>
+                        <button class="action-btn btn-flag" id="flagBtn">FLAG</button>
+                        <a asp-controller="File" asp-action="DownloadReport" asp-route-day="@Model.Day.ToString("yyyy-MM-dd")" class="action-btn btn-edit">REPORT</a>
+                        <a asp-action="Index" class="action-btn btn-delete">BACK</a>
                     </div>
                 </div>
             </div>
         </div>
         
-        <!-- Graph on Right -->
-        <div class="col-lg-7">
-            <div class="card" style="height: 100%; border-top-right-radius: 0;">
-                <div class="card-header">
-                    <h5>Peak Pressure Over Time</h5>
+        <!-- Right Column - Comments -->
+        <div class="comments-section">
+            <div class="comments-title">Comments and Feedback</div>
+            <div class="comments-list" id="commentsList">
+                <!-- Example comments - will be populated dynamically -->
+                <div class="comment-item">
+                    <div class="comment-author">
+                        <div class="author-icon"></div>
+                        <strong>Example User</strong>
+                    </div>
+                    <div class="comment-text">Example Comment...</div>
                 </div>
-                <div class="card-body">
-                    <canvas id="peakChart"></canvas>
+                <div class="comment-item">
+                    <div class="comment-author">
+                        <div class="author-icon"></div>
+                        <strong>Clinician (reply)</strong>
+                    </div>
+                    <div class="comment-text">Example Comment...</div>
+                    <button class="reply-btn">Reply</button>
+                </div>
+            </div>
+            
+            <div class="new-comment-section">
+                <label>Create New Comment...</label>
+                <textarea id="commentInput" placeholder="..."></textarea>
+                <div class="comment-actions">
+                    <label class="flag-checkbox">
+                        <input type="checkbox" id="urgentFlag">
+                        Flag for <a href="#">urgent review</a>
+                    </label>
+                    <button class="send-btn" id="sendCommentBtn">SEND</button>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <div class="mt-4">
-        <a asp-action="Index" class="btn btn-secondary">Back to Dashboard</a>
-        <a asp-controller="File" asp-action="DownloadCsv" asp-route-day="@Model.Day.ToString("yyyy-MM-dd")" class="btn btn-primary ms-2">Download CSV</a>
-        <a asp-controller="File" asp-action="DownloadReport" asp-route-day="@Model.Day.ToString("yyyy-MM-dd")" class="btn btn-info ms-2">Download Report</a>
     </div>
 </div>
 
@@ -95,9 +408,17 @@
 
 @section Scripts {
     <script>
-        // Graph script
         const day = '@Model.Day.ToString("yyyy-MM-dd")';
         let peakChart;
+        let currentPeakValue = 0;
+        
+        // Loading spinner functions
+        function showLoading(elementId) {
+            document.getElementById(elementId)?.classList.remove('hidden');
+        }
+        function hideLoading(elementId) {
+            document.getElementById(elementId)?.classList.add('hidden');
+        }
 
         // Fetch the peak data for the given day and time range selected.
         async function fetchPeakData(options = {}) {
@@ -138,10 +459,17 @@
                 },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
                     scales: {
                         x: {
-                            title: { display: true, text: 'Time (by minutes)' }
+                            title: { display: true, text: 'Time (in minutes)' },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45,
+                                autoSkip: true,
+                                maxTicksLimit: 10
+                            }
                         },
                         y: {
                             beginAtZero: true,
@@ -153,21 +481,36 @@
                     }
                 }
             });
+            
+            // Update peak pressure metric
+            if (data.length > 0) {
+                currentPeakValue = Math.max(...data);
+                document.getElementById('peakPressure').textContent = currentPeakValue;
+            } else {
+                document.getElementById('peakPressure').textContent = '-';
+            }
         }
 
-        // Fetches and rebuilds the chart for a given day and optional range.
-        async function loadDay(options = {}) {
-            const result = await fetchPeakData(options);
-            if (!result || result.points.length === 0) {
-                buildChart([], []);
-                loadHeatmap(options); // Pass options here too!
-                return;
+        // Load graph independently
+        async function loadGraph(options = {}) {
+            showLoading('graphLoading');
+            try {
+                const result = await fetchPeakData(options);
+                if (!result || result.points.length === 0) {
+                    buildChart([], []);
+                    return;
+                }
+                const labels = result.points.map(p => new Date(p.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+                const values = result.points.map(p => p.v);
+                buildChart(labels, values);
+            } finally {
+                hideLoading('graphLoading');
             }
-            const labels = result.points.map(p => new Date(p.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-            const values = result.points.map(p => p.v);
-            buildChart(labels, values);
-            
-            // Also load heatmap with same time range
+        }
+
+        // Load both graph and heatmap
+        function loadDay(options = {}) {
+            loadGraph(options);
             loadHeatmap(options);
         }
 
@@ -179,24 +522,13 @@
         // Quick range buttons
         document.querySelectorAll('.range-btn').forEach(btn => {
             btn.addEventListener('click', () => {
+                // Update active state
+                document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
                 const hours = btn.getAttribute('data-hours');
                 loadDay({ hoursBack: hours });
             });
-        });
-
-        // Custom range (From/To) in HH:mm for the selected day
-        document.getElementById('applyCustomRange').addEventListener('click', () => {
-            const fromVal = document.getElementById('fromTime').value;
-            const toVal = document.getElementById('toTime').value;
-            if (!fromVal || !toVal) return;
-            loadDay({ from: buildDateTime(day, fromVal), to: buildDateTime(day, toVal) });
-        });
-
-        // Clear the custom range back to the full day
-        document.getElementById('clearRange').addEventListener('click', () => {
-            document.getElementById('fromTime').value = '';
-            document.getElementById('toTime').value = '';
-            loadDay();
         });
     </script>
         
@@ -205,14 +537,14 @@
         const heatmapCanvas = document.getElementById('heatmapCanvas');
         const heatmapCtx = heatmapCanvas.getContext('2d');
 
-        const MAX_PRESSURE_VALUE = 256;
+        const MAX_PRESSURE_VALUE = 255;
         const GRID_SIZE = 32;
-        const CELL_PIXEL_SIZE = 15;
+        const CELL_PIXEL_SIZE = 12;
 
         heatmapCanvas.width = GRID_SIZE * CELL_PIXEL_SIZE;
         heatmapCanvas.height = GRID_SIZE * CELL_PIXEL_SIZE;
 
-        // Color mapping function - converts value (0-256) to HSL Color
+        // Color mapping function - converts value (0-255) to HSL Color
         function translateColor(pressure) {
             const adjusted = Math.min(pressure / MAX_PRESSURE_VALUE, 1.0);
             const hue = Math.floor(240 * (1 - adjusted));
@@ -247,7 +579,7 @@
 
             const average = Math.round(sum / count);
             const totalPixels = GRID_SIZE * GRID_SIZE;
-            const contactAreaPercentage = ((activePixels / totalPixels) * 100).toFixed(2);
+            const contactAreaPercentage = ((activePixels / totalPixels) * 100).toFixed(1);
 
             document.getElementById('minValue').textContent = min;
             document.getElementById('maxValue').textContent = max;
@@ -290,8 +622,22 @@
             document.getElementById('hoverValue').textContent = '-';
         });
         
+        function clearHeatmapDisplay() {
+            heatmapCtx.clearRect(0, 0, heatmapCanvas.width, heatmapCanvas.height);
+            heatmapCanvas.heatmapData = null;
+            document.getElementById('minValue').textContent = '-';
+            document.getElementById('maxValue').textContent = '-';
+            document.getElementById('avgValue').textContent = '-';
+            document.getElementById('pressureRange').textContent = '-';
+            document.getElementById('contactArea').textContent = '-';
+            document.getElementById('peakPressure').textContent = '-';
+            document.getElementById('duration').textContent = '-';
+            document.getElementById('hoverValue').textContent = '-';
+        }
+        
         async function loadHeatmap(options = {}) {
-            const element = document.getElementById("hidden-canvas-error");
+            showLoading('heatmapLoading');
+            const errorElement = document.getElementById("hidden-canvas-error");
             try {
                 const params = new URLSearchParams({ day });
                 if (options.hoursBack) params.append('hoursBack', options.hoursBack);
@@ -302,37 +648,36 @@
                 const result = await response.json();
 
                 if (result && result.averageMap && result.averageMap.length === 32) {
-                    element.hidden = true;
+                    errorElement.hidden = true;
                     heatmapCanvas.hidden = false;
                     drawHeatmap(result.averageMap);
+                    
+                    // Display duration from frame count
+                    if (result.durationSeconds !== undefined) {
+                        const totalSeconds = result.durationSeconds;
+                        const minutes = Math.floor(totalSeconds / 60);
+                        const seconds = totalSeconds % 60;
+                        document.getElementById('duration').textContent = `${minutes}m ${seconds}s`;
+                    } else {
+                        document.getElementById('duration').textContent = '-';
+                    }
                 } else {
-                    // No data for this range - clear canvas and show message
-                    element.hidden = false;
+                    errorElement.hidden = false;
                     heatmapCanvas.hidden = true;
-                    heatmapCtx.clearRect(0, 0, heatmapCanvas.width, heatmapCanvas.height);
-                    heatmapCanvas.heatmapData = null;
-                    document.getElementById('minValue').textContent = '-';
-                    document.getElementById('maxValue').textContent = '-';
-                    document.getElementById('avgValue').textContent = '-';
-                    document.getElementById('contactArea').textContent = '-';
-                    document.getElementById('hoverValue').textContent = '-';
+                    clearHeatmapDisplay();
                 }
             } catch (error) {
                 console.error('Error loading heatmap:', error);
-                element.hidden = false;
+                errorElement.hidden = false;
                 heatmapCanvas.hidden = true;
-                heatmapCtx.clearRect(0, 0, heatmapCanvas.width, heatmapCanvas.height);
-                heatmapCanvas.heatmapData = null;
-                document.getElementById('minValue').textContent = '-';
-                document.getElementById('maxValue').textContent = '-';
-                document.getElementById('avgValue').textContent = '-';
-                document.getElementById('contactArea').textContent = '-';
-                document.getElementById('hoverValue').textContent = '-';
+                clearHeatmapDisplay();
+            } finally {
+                hideLoading('heatmapLoading');
             }
         }
         
         // Initialize both graph and heatmap on page load
-        loadDay();
+        loadDay({ hoursBack: 24 });
     </script>
 }
 

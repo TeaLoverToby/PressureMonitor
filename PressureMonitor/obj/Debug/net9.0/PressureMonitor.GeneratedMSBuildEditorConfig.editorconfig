@@ -17,65 +17,69 @@ build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = PressureMonitor
 build_property.RootNamespace = PressureMonitor
-build_property.ProjectDir = C:\Users\tobyw\RiderProjects\PressureMonitor\PressureMonitor\
+build_property.ProjectDir = /home/tobyw/Desktop/PressureMonitor/PressureMonitor/
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.RazorLangVersion = 9.0
 build_property.SupportLocalizedComponentNames = 
 build_property.GenerateRazorMetadataSourceChecksumAttributes = 
-build_property.MSBuildProjectDirectory = C:\Users\tobyw\RiderProjects\PressureMonitor\PressureMonitor
+build_property.MSBuildProjectDirectory = /home/tobyw/Desktop/PressureMonitor/PressureMonitor
 build_property._RazorSourceGeneratorDebug = 
 build_property.EffectiveAnalysisLevelStyle = 9.0
 build_property.EnableCodeStyleSeverity = 
 
-[C:/Users/tobyw/RiderProjects/PressureMonitor/PressureMonitor/Views/Home/Index.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxJbmRleC5jc2h0bWw=
+[/home/tobyw/Desktop/PressureMonitor/PressureMonitor/Views/Account/Login.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQWNjb3VudC9Mb2dpbi5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/tobyw/RiderProjects/PressureMonitor/PressureMonitor/Views/Home/Login.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxMb2dpbi5jc2h0bWw=
+[/home/tobyw/Desktop/PressureMonitor/PressureMonitor/Views/Account/Register.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQWNjb3VudC9SZWdpc3Rlci5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/tobyw/RiderProjects/PressureMonitor/PressureMonitor/Views/Home/Register.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxSZWdpc3Rlci5jc2h0bWw=
+[/home/tobyw/Desktop/PressureMonitor/PressureMonitor/Views/Admin/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQWRtaW4vSW5kZXguY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/tobyw/RiderProjects/PressureMonitor/PressureMonitor/Views/Home/Test.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxUZXN0LmNzaHRtbA==
+[/home/tobyw/Desktop/PressureMonitor/PressureMonitor/Views/Clinician/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvQ2xpbmljaWFuL0luZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/tobyw/RiderProjects/PressureMonitor/PressureMonitor/Views/Shared/Error.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXEVycm9yLmNzaHRtbA==
+[/home/tobyw/Desktop/PressureMonitor/PressureMonitor/Views/Home/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvSG9tZS9JbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/tobyw/RiderProjects/PressureMonitor/PressureMonitor/Views/Shared/RoleMissing.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXFJvbGVNaXNzaW5nLmNzaHRtbA==
+[/home/tobyw/Desktop/PressureMonitor/PressureMonitor/Views/Patient/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvUGF0aWVudC9JbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/tobyw/RiderProjects/PressureMonitor/PressureMonitor/Views/Shared/_ValidationScriptsPartial.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
+[/home/tobyw/Desktop/PressureMonitor/PressureMonitor/Views/Patient/Upload.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvUGF0aWVudC9VcGxvYWQuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/tobyw/RiderProjects/PressureMonitor/PressureMonitor/Views/User/AdminDashboard.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlclxBZG1pbkRhc2hib2FyZC5jc2h0bWw=
+[/home/tobyw/Desktop/PressureMonitor/PressureMonitor/Views/Patient/ViewPressureMap.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvUGF0aWVudC9WaWV3UHJlc3N1cmVNYXAuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/tobyw/RiderProjects/PressureMonitor/PressureMonitor/Views/User/ClinicianDashboard.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlclxDbGluaWNpYW5EYXNoYm9hcmQuY3NodG1s
+[/home/tobyw/Desktop/PressureMonitor/PressureMonitor/Views/Shared/Error.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL0Vycm9yLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/tobyw/RiderProjects/PressureMonitor/PressureMonitor/Views/User/PatientDashboard.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlclxQYXRpZW50RGFzaGJvYXJkLmNzaHRtbA==
+[/home/tobyw/Desktop/PressureMonitor/PressureMonitor/Views/Shared/RoleMissing.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL1JvbGVNaXNzaW5nLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/tobyw/RiderProjects/PressureMonitor/PressureMonitor/Views/_ViewImports.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdJbXBvcnRzLmNzaHRtbA==
+[/home/tobyw/Desktop/PressureMonitor/PressureMonitor/Views/Shared/_ValidationScriptsPartial.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL19WYWxpZGF0aW9uU2NyaXB0c1BhcnRpYWwuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/tobyw/RiderProjects/PressureMonitor/PressureMonitor/Views/_ViewStart.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcX1ZpZXdTdGFydC5jc2h0bWw=
+[/home/tobyw/Desktop/PressureMonitor/PressureMonitor/Views/_ViewImports.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvX1ZpZXdJbXBvcnRzLmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
-[C:/Users/tobyw/RiderProjects/PressureMonitor/PressureMonitor/Views/Shared/_Layout.cshtml]
-build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2hhcmVkXF9MYXlvdXQuY3NodG1s
-build_metadata.AdditionalFiles.CssScope = b-1lfup36plp
+[/home/tobyw/Desktop/PressureMonitor/PressureMonitor/Views/_ViewStart.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvX1ZpZXdTdGFydC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[/home/tobyw/Desktop/PressureMonitor/PressureMonitor/Views/Shared/_Layout.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3MvU2hhcmVkL19MYXlvdXQuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = b-41brk4n8vi
