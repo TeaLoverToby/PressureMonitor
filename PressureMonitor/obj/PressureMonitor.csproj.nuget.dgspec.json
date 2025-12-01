@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\tobyw\\RiderProjects\\PressureMonitor\\PressureMonitor\\PressureMonitor.csproj": {}
+    "/home/tobyw/Desktop/PressureMonitor/PressureMonitor/PressureMonitor.csproj": {}
   },
   "projects": {
-    "C:\\Users\\tobyw\\RiderProjects\\PressureMonitor\\PressureMonitor\\PressureMonitor.csproj": {
+    "/home/tobyw/Desktop/PressureMonitor/PressureMonitor/PressureMonitor.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\tobyw\\RiderProjects\\PressureMonitor\\PressureMonitor\\PressureMonitor.csproj",
+        "projectUniqueName": "/home/tobyw/Desktop/PressureMonitor/PressureMonitor/PressureMonitor.csproj",
         "projectName": "PressureMonitor",
-        "projectPath": "C:\\Users\\tobyw\\RiderProjects\\PressureMonitor\\PressureMonitor\\PressureMonitor.csproj",
-        "packagesPath": "C:\\Users\\tobyw\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\tobyw\\RiderProjects\\PressureMonitor\\PressureMonitor\\obj\\",
+        "projectPath": "/home/tobyw/Desktop/PressureMonitor/PressureMonitor/PressureMonitor.csproj",
+        "packagesPath": "/home/tobyw/.nuget/packages/",
+        "outputPath": "/home/tobyw/Desktop/PressureMonitor/PressureMonitor/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\tobyw\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "/home/tobyw/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
@@ -86,7 +86,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/9.0.306/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

@@ -34,6 +34,8 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
     [HttpGet]
     public async Task<IActionResult> GetAveragePressureMap(string? day, int? hoursBack, string? from, string? to)
     {
+        const int FramesPerSecond = 15;
+        
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userIdStr) || !int.TryParse(userIdStr, out var userId))
         {
@@ -87,8 +89,11 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         // If no frames in range, return empty array
         if (filteredFrames.Count == 0)
         {
-            return Json(new { averageMap = new int[0][] });
+            return Json(new { averageMap = new int[0][], frameCount = 0, durationSeconds = 0 });
         }
+
+        // Calculate duration from frame count
+        var durationSeconds = filteredFrames.Count / FramesPerSecond;
 
         // Calculate average from filtered frames
         var averageMap = new int[32][];
@@ -117,7 +122,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             }
         }
         
-        return Json(new { averageMap });
+        return Json(new { averageMap, frameCount = filteredFrames.Count, durationSeconds });
     }
 
     [HttpGet]
@@ -236,12 +241,13 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         foreach (var frame in frames)
         {
             // Check if Data is null, though it shouldn't be for valid frames
-            if (frame.Data == null) continue;
-
+            var data = frame.Data;
+            if (data == null) continue;
+            
             for (int r = 0; r < 32; r++)
             {
                 // Join the row values with commas
-                sb.AppendLine(string.Join(",", frame.Data[r]));
+                sb.AppendLine(string.Join(",", data[r]));
             }
         }
 
