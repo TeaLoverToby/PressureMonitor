@@ -3,6 +3,7 @@
     ViewData["Title"] = "Patient Dashboard";
 }
 
+<!-- Decided to move most of the style code into a CSS file to prevent HTML getting messy -->
 <style>
     .dashboard-header {
         display: flex;
@@ -20,7 +21,7 @@
     .dashboard-title-section h1 {
         font-size: 2rem;
         font-weight: bold;
-        color: #8B4513;
+        color: #13438b;
         margin: 0;
     }
     .dashboard-title-section p {
@@ -39,7 +40,7 @@
     }
     .day-selector-section h3 {
         font-weight: bold;
-        color: #8B4513;
+        color: #13438b;
         margin-bottom: 10px;
     }
     .day-selector-row {
@@ -78,7 +79,7 @@
     .calendar-btn {
         padding: 8px 16px;
         border: 2px solid #333;
-        background: #F5DEB3;
+        background: #3478dd;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -89,7 +90,7 @@
         white-space: nowrap;
     }
     .calendar-btn:hover {
-        background: #E8D4A8;
+        background: #13438b;
     }
     .calendar-input {
         position: absolute;
@@ -138,8 +139,6 @@
     .no-data-message.hidden {
         display: none;
     }
-    
-    /* Loading spinner styles */
     .loading-overlay {
         position: absolute;
         top: 0;
@@ -159,7 +158,7 @@
         width: 40px;
         height: 40px;
         border: 4px solid #f3f3f3;
-        border-top: 4px solid #8B4513;
+        border-top: 4px solid #13438b;
         border-radius: 50%;
         animation: spin 1s linear infinite;
     }
@@ -225,18 +224,160 @@
     
     .view-details-btn {
         padding: 8px 30px;
-        background: #F5DEB3;
+        background: #cca808;
         border: 2px solid #333;
         font-weight: bold;
         cursor: pointer;
     }
     .view-details-btn:hover {
-        background: #E8D4A8;
+        background: #e7e07b;
+    }
+    
+    /* Comments Section Styles */
+    .main-content-layout {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+    }
+    @@media (max-width: 992px) {
+        .main-content-layout {
+            grid-template-columns: 1fr;
+        }
+    }
+    .left-content {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    .right-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+    .comments-section {
+        border: 2px solid #333;
+        padding: 15px;
+        display: flex;
+        flex-direction: column;
+    }
+    .comments-title {
+        font-weight: bold;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #333;
+        margin-bottom: 15px;
+    }
+    .comments-list {
+        flex: 1;
+        overflow-y: auto;
+        margin-bottom: 15px;
+        max-height: 200px;
+    }
+    .comment-item {
+        margin-bottom: 15px;
+    }
+    .comment-author {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 5px;
+    }
+    .author-icon {
+        width: 24px;
+        height: 24px;
+        border: 1px solid #333;
+        border-radius: 50%;
+    }
+    .comment-text {
+        padding: 8px 12px;
+        border: 1px solid #ccc;
+        background: #f9f9f9;
+        font-size: 0.85rem;
+        margin-bottom: 5px;
+        display: inline-block;
+    }
+    .comment-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .reply-btn {
+        padding: 5px 15px;
+        border: 2px solid #333;
+        background: #fff;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+    .reply-btn:hover {
+        background: #f0f0f0;
+    }
+    .heatmap-link {
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .heatmap-link a {
+        text-decoration: underline;
+    }
+    .view-heatmap-btn {
+        padding: 3px 10px;
+        border: 2px solid #333;
+        background: #fff;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 0.75rem;
+    }
+    .view-heatmap-btn:hover {
+        background: #f0f0f0;
+    }
+    .new-comment-section {
+        border-top: 1px solid #ccc;
+        padding-top: 15px;
+    }
+    .new-comment-section label {
+        font-size: 0.85rem;
+        margin-bottom: 5px;
+        display: block;
+    }
+    .new-comment-section textarea {
+        width: 100%;
+        height: 60px;
+        border: 1px solid #ccc;
+        padding: 8px;
+        margin-bottom: 10px;
+        resize: none;
+    }
+    .comment-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .flag-checkbox {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.85rem;
+    }
+    .flag-checkbox label {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin: 0;
+    }
+    .send-btn {
+        padding: 8px 25px;
+        border: 2px solid #333;
+        background: #fff;
+        font-weight: bold;
+        cursor: pointer;
+    }
+    .send-btn:hover {
+        background: #f0f0f0;
     }
 </style>
 
 <div class="container-fluid">
-    <!-- Header Section -->
     <div class="dashboard-header">
         <div class="dashboard-title-section">
             <div>
@@ -250,13 +391,10 @@
         </div>
     </div>
     
-    <!-- Day Selector Section -->
     <div class="day-selector-section">
         <h3>Change Day</h3>
         <div class="day-selector-row">
-            <div class="day-boxes" id="dayBoxes">
-                <!-- Day boxes will be populated by JavaScript -->
-            </div>
+            <div class="day-boxes" id="dayBoxes"></div>
             <div class="calendar-wrapper">
                 <input type="date" class="calendar-input" id="calendarInput" title="Choose a specific date">
                 <button type="button" class="calendar-btn" id="calendarBtn" title="Choose a specific date">Choose Date</button>
@@ -265,55 +403,93 @@
         <div class="viewing-label">Viewing Full Day: <span id="currentViewingDay">--/--/----</span></div>
     </div>
     
-    <!-- Main Content Grid -->
-    <div class="row g-3">
-        <!-- Heatmap Section -->
-        <div class="col-md-6">
-            <div class="heatmap-section h-100">
-                <div class="loading-overlay hidden" id="heatmapLoading">
-                    <div class="spinner"></div>
-                </div>
-                <div class="section-title">Heat Map Diagram - Average Pressure</div>
-                <div class="heatmap-container">
-                    <canvas id="heatmapCanvas"></canvas>
-                    <div class="no-data-message hidden" id="heatmapNoData">No data for this day</div>
-                    <div class="heatmap-legend" id="heatmapLegend">
-                        <span>Low (0)</span>
-                        <div class="legend-gradient"></div>
-                        <span>High (255)</span>
+    <div class="main-content-layout">
+        <div class="left-content">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="heatmap-section h-100">
+                        <div class="loading-overlay hidden" id="heatmapLoading">
+                            <div class="spinner"></div>
+                        </div>
+                        <div class="section-title">Heat Map Diagram - Average Pressure</div>
+                        <div class="heatmap-container">
+                            <canvas id="heatmapCanvas"></canvas>
+                            <div class="no-data-message hidden" id="heatmapNoData">No data for this day</div>
+                            <div class="heatmap-legend" id="heatmapLegend">
+                                <span>Low (0)</span>
+                                <div class="legend-gradient"></div>
+                                <span>High (255)</span>
+                            </div>
+                        </div>
                     </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="graph-section h-100">
+                        <div class="loading-overlay hidden" id="graphLoading">
+                            <div class="spinner"></div>
+                        </div>
+                        <div class="section-title">Peak Pressure Graph</div>
+                        <canvas id="peakChart"></canvas>
+                        <div class="no-data-message hidden" id="graphNoData">No data for this day</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="metrics-section">
+                <div class="metrics-header">
+                    <div class="metrics-title">Key Metrics</div>
+                    <button class="view-details-btn" id="viewDetailsBtn">VIEW</button>
+                </div>
+                <div class="metrics-grid">
+                    <div class="metric-item">Lowest Pressure: <span id="minValue">-</span></div>
+                    <div class="metric-item">Average Pressure: <span id="avgValue">-</span></div>
+                    <div class="metric-item"><span><span class="help-icon">?</span> Contact Area: <span id="contactArea">-</span></span></div>
+                    <div class="metric-item">Highest Pressure: <span id="maxValue">-</span></div>
+                    <div class="metric-item">Pressure Range: <span id="pressureRange">-</span></div>
+                    <div class="metric-item"><span><span class="help-icon">?</span> Peak Pressure: <span id="peakPressure">-</span></span></div>
+                    <div class="metric-item">Duration: <span id="duration">-</span></div>
+                    <div class="metric-item">Hover Data: <span id="hoverValue">-</span></div>
                 </div>
             </div>
         </div>
         
-        <!-- Graph Section -->
-        <div class="col-md-6">
-            <div class="graph-section h-100">
-                <div class="loading-overlay hidden" id="graphLoading">
-                    <div class="spinner"></div>
+        <!-- Right Sidebar: Comments Section -->
+        <div class="right-sidebar">
+            <div class="comments-section">
+                <div class="comments-title">Recent Comments</div>
+                <div class="comments-list" id="commentsList">
+                    <!-- Example comment - will be populated dynamically -->
+                    <div class="comment-item">
+                        <div class="comment-author">
+                            <div class="author-icon"></div>
+                            <strong>Example Clinician</strong>
+                        </div>
+                        <div class="comment-row">
+                            <div class="comment-text">Example feedback...</div>
+                            <button class="reply-btn">Reply</button>
+                        </div>
+                        <div class="heatmap-link">
+                            Heatmap: <a href="#">XX/XX/XXXX</a>
+                            <button class="view-heatmap-btn">VIEW</button>
+                        </div>
+                    </div>
                 </div>
-                <div class="section-title">Peak Pressure Graph</div>
-                <canvas id="peakChart"></canvas>
-                <div class="no-data-message hidden" id="graphNoData">No data for this day</div>
+                
+                <div class="new-comment-section">
+                    <label>Comment about current data...</label>
+                    <textarea id="commentInput" placeholder="..."></textarea>
+                    <div class="comment-actions">
+                        <div class="flag-checkbox">
+                            <label>
+                                <input type="checkbox" id="urgentFlag">
+                                Flag for urgent review
+                            </label>
+                        </div>
+                        <button class="send-btn" id="sendCommentBtn">SEND</button>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
-    
-    <!-- Key Metrics Section -->
-    <div class="metrics-section">
-        <div class="metrics-header">
-            <div class="metrics-title">Key Metrics</div>
-            <button class="view-details-btn" id="viewDetailsBtn">VIEW</button>
-        </div>
-        <div class="metrics-grid">
-            <div class="metric-item">Lowest Pressure: <span id="minValue">-</span></div>
-            <div class="metric-item">Average Pressure: <span id="avgValue">-</span></div>
-            <div class="metric-item"><span><span class="help-icon">?</span> Contact Area: <span id="contactArea">-</span></span></div>
-            <div class="metric-item">Highest Pressure: <span id="maxValue">-</span></div>
-            <div class="metric-item">Pressure Range: <span id="pressureRange">-</span></div>
-            <div class="metric-item"><span><span class="help-icon">?</span> Peak Pressure: <span id="peakPressure">-</span></span></div>
-            <div class="metric-item">Duration: <span id="duration">-</span></div>
-            <div class="metric-item">Hover Data: <span id="hoverValue">-</span></div>
         </div>
     </div>
 </div>
@@ -321,7 +497,7 @@
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        // Heatmap script - must be defined first
+        // Heatmap script
         const heatmapCanvas = document.getElementById('heatmapCanvas');
         const heatmapCtx = heatmapCanvas.getContext('2d');
         
@@ -331,6 +507,8 @@
         
         heatmapCanvas.width = GRID_SIZE * CELL_PIXEL_SIZE;
         heatmapCanvas.height = GRID_SIZE * CELL_PIXEL_SIZE;
+
+        // TODO: Might change the color wheel selection later - looks a bit ugly
         
         // Color mapping function - converts value (0-255) to HSL Color
         // HSL from Blue (240) to Red (0)
@@ -342,6 +520,7 @@
         
         // Draw the heatmap
         function drawHeatmap(data) {
+            // Clear prior drawing (incase there was a prior heat map)
             heatmapCtx.clearRect(0, 0, heatmapCanvas.width, heatmapCanvas.height);
             
             if (!data || data.length !== 32) {
@@ -349,6 +528,7 @@
                 return;
             }
 
+            // We know that the value range is 0 - 256 so we can define min/max.
             let min = 257;
             let max = -1;
             let sum = 0;
@@ -384,6 +564,7 @@
                 }
             }
             
+            // Cache the matrix data for the hover logic
             heatmapCanvas.heatmapData = data;
         }
         
@@ -391,17 +572,22 @@
         heatmapCanvas.addEventListener('mousemove', (e) => {
             if (!heatmapCanvas.heatmapData) return;
             
+            // We need to check if the mouse location is within the canvas
             const rect = heatmapCanvas.getBoundingClientRect();
             const scaleX = heatmapCanvas.width / rect.width;
             const scaleY = heatmapCanvas.height / rect.height;
             
+            // Get mouse position relative to canvas
             const x = (e.clientX - rect.left) * scaleX;
             const y = (e.clientY - rect.top) * scaleY;
             
+            // By dividing, we can find the cell indices
             const col = Math.floor(x / CELL_PIXEL_SIZE);
             const row = Math.floor(y / CELL_PIXEL_SIZE);
             
+            // Ensure that the indicies are within the bounds
             if (row >= 0 && row < GRID_SIZE && col >= 0 && col < GRID_SIZE) {
+                // Check the matrix data for the pressure value
                 const value = heatmapCanvas.heatmapData[row][col];
                 document.getElementById('hoverValue').textContent = `${value} (Row: ${row}, Col: ${col})`;
             }
@@ -431,6 +617,7 @@
                 const response = await fetch(`/File/getAveragePressureMap?${params}`);
                 const result = await response.json();
                 
+                // Gets the matrix data of the average map
                 if (result && result.averageMap && result.averageMap.length === 32) {
                     hideHeatmapNoData();
                     drawHeatmap(result.averageMap);
@@ -445,9 +632,11 @@
                         document.getElementById('duration').textContent = '-';
                     }
                 } else {
+                    // No data for this range - clear the canvas and show this message
                     showHeatmapNoData();
                 }
             } catch (error) {
+                // Error occurred - clear the canvas and show no data message
                 showHeatmapNoData();
                 console.error('Error loading heatmap:', error);
             } finally {
@@ -456,6 +645,7 @@
         }
         
         function clearHeatmapDisplay() {
+            // Clear everything!!!
             heatmapCtx.clearRect(0, 0, heatmapCanvas.width, heatmapCanvas.height);
             heatmapCanvas.heatmapData = null;
             document.getElementById('minValue').textContent = '-';
@@ -469,6 +659,7 @@
         }
         
         function showHeatmapNoData() {
+            // By removing the hidden tag, the no data tag should now appear.
             heatmapCanvas.style.display = 'none';
             document.getElementById('heatmapNoData').classList.remove('hidden');
             document.getElementById('heatmapLegend').style.display = 'none';
@@ -476,17 +667,20 @@
         }
         
         function hideHeatmapNoData() {
+            // Now we hide the no data message and show the canvas
             heatmapCanvas.style.display = 'block';
             document.getElementById('heatmapNoData').classList.add('hidden');
             document.getElementById('heatmapLegend').style.display = 'flex';
         }
         
         function showGraphNoData() {
+            // Hide the graph and show the no data message
             document.getElementById('peakChart').style.display = 'none';
             document.getElementById('graphNoData').classList.remove('hidden');
         }
         
         function hideGraphNoData() {
+            // Show the graph and hide the no data message
             document.getElementById('peakChart').style.display = 'block';
             document.getElementById('graphNoData').classList.add('hidden');
         }
@@ -505,6 +699,7 @@
         }
 
         // Fetch the peak data for the given day and time range selected.
+        // The data received is JSON and follows format of day, rangeStart, rangeEnd and points[]
         async function fetchPeakData(day, options = {}) {
             const params = new URLSearchParams({ day });
             if (options.hoursBack) {
@@ -514,14 +709,15 @@
                 params.append('from', options.from);
                 params.append('to', options.to);
             }
+            // Calls the backend method and follows the parameters
             const res = await fetch(`/File/getPressureGraphData?${params.toString()}`);
             if (!res.ok) return null;
             return await res.json();
         }
 
-        // Format date from yyyy-MM-dd to MM/DD/YYYY
+        // Just formats the date from yyyy-MM-dd to MM/DD/YYYY
         function formatDateDisplay(dateStr) {
-            if (!dateStr) return '--/--/----';
+            if (!dateStr) return '--/--/----'; // empty placeholder
             const parts = dateStr.split('-');
             if (parts.length !== 3) return dateStr;
             return `${parts[1]}/${parts[2]}/${parts[0]}`;
@@ -536,6 +732,7 @@
             const displayDays = days.slice(0, 8);
             
             displayDays.forEach((day, index) => {
+                // Create the day box element
                 const box = document.createElement('div');
                 box.className = 'day-box' + (index === 0 ? ' active' : '');
                 box.textContent = formatDateDisplay(day);
@@ -553,24 +750,24 @@
             currentDayIndex = index;
             const day = allDays[index];
             
-            // Update active state on day boxes
+            // Update active state on day boxes (highlights selected day)
             document.querySelectorAll('.day-box').forEach((box, i) => {
                 box.classList.toggle('active', i === index);
             });
             
-            // Update viewing label
+            // Update the view message
             document.getElementById('currentViewingDay').textContent = formatDateDisplay(day);
             
             // Load data for selected day
             loadDay(day);
         }
         
-        // Select a custom day (from calendar input)
+        // Select a custom day from the calendar input
         function selectCustomDay(day) {
-            // Update viewing label
+            // Update viewing message
             document.getElementById('currentViewingDay').textContent = formatDateDisplay(day);
             
-            // Check if this day is in our available days and update active state
+            // Check the day entered is linked to a button, if so then we can highlight it
             const dayIndex = allDays.indexOf(day);
             if (dayIndex !== -1) {
                 currentDayIndex = dayIndex;
@@ -578,25 +775,31 @@
                     box.classList.toggle('active', i === dayIndex);
                 });
             } else {
-                // Deactivate all day boxes since this is a custom date
+                // Make sure that no day boxes are active/highlighted
                 document.querySelectorAll('.day-box').forEach(box => {
                     box.classList.remove('active');
                 });
                 currentDayIndex = -1;
             }
             
-            // Load data for selected day (will show "no data" if day doesn't exist)
+            // Load data for selected day
             loadDay(day);
         }
 
-        // Creates the line chart
+        /* 
+            Creates the line chart
+            Labels - array of string labels for the X axis
+            Data - array of numeric values for the Y axis
+        */
         function buildChart(labels, data) {
             const ctx = document.getElementById('peakChart').getContext('2d');
 
+            // If a previous one exists, we remove it first
             if (peakChart) {
                 peakChart.destroy();
             }
 
+            // Followed docuementation from the Chart.js website
             peakChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -629,17 +832,11 @@
                     }
                 }
             });
-            
-            // Update peak pressure metric
-            if (data.length > 0) {
-                currentPeakValue = Math.max(...data);
-                document.getElementById('peakPressure').textContent = currentPeakValue;
-            }
         }
 
-        // Fetches and rebuilds the chart for a given day
+        // Fetches and rebuilds the chart/heatmap for the given day
         async function loadDay(day, options = {}) {
-            // Load chart and heatmap independently (don't wait for each other)
+            // Big change from prior version, we now load graph and heatmap independently so they don't block each other
             loadGraph(day, options);
             loadHeatmap(day, options);
         }
@@ -658,7 +855,6 @@
                     }
                     
                     showGraphNoData();
-                    document.getElementById('peakPressure').textContent = '-';
                     return;
                 }
                 
@@ -666,24 +862,31 @@
                 const labels = peakResult.points.map(p => new Date(p.t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
                 const values = peakResult.points.map(p => p.v);
                 buildChart(labels, values);
+                
+                // Update peak pressure metric
+                if (values.length > 0) {
+                    currentPeakValue = Math.max(...values);
+                    document.getElementById('peakPressure').textContent = currentPeakValue;
+                } else {
+                    document.getElementById('peakPressure').textContent = '-';
+                }
             } catch (error) {
                 console.error('Error loading graph:', error);
-                // Destroy existing chart on error
+                // Destroy existing chart if there is an error
                 if (peakChart) {
                     peakChart.destroy();
                     peakChart = null;
                 }
                 showGraphNoData();
-                document.getElementById('peakPressure').textContent = '-';
             } finally {
+                // Removes the loading spinner
                 hideLoading('graphLoading');
             }
         }
 
-        // Initialize the dashboard
+        // When the page is loaded, the available days are fetched and loaded into the select boxes
         document.addEventListener('DOMContentLoaded', async () => {
             allDays = await fetchDays();
-            
             if (allDays.length === 0) {
                 document.getElementById('dayBoxes').innerHTML = '<div class="day-box">No data</div>';
                 document.getElementById('totalMaps').textContent = '0';
@@ -691,25 +894,24 @@
                 buildChart([], []);
                 return;
             }
-
-            // Update stats
             document.getElementById('totalMaps').textContent = allDays.length;
             document.getElementById('lastDayRecorded').textContent = formatDateDisplay(allDays[0]);
 
-            // Build day selection boxes
+            // Build day selection boxes - might not be necessary?
             buildDayBoxes(allDays);
 
-            // Load the most recent day
+            // Since the page is being loaded, we select the most recent day by default
             selectDay(0);
         });
         
-        // Calendar button functionality
+        // Calendar button logic
         document.getElementById('calendarBtn')?.addEventListener('click', () => {
             document.getElementById('calendarInput')?.click();
         });
         
         document.getElementById('calendarInput')?.addEventListener('change', (e) => {
-            const selectedDate = e.target.value; // Format: yyyy-MM-dd
+            // Fetches in the format yyyy-MM-dd
+            const selectedDate = e.target.value;
             if (selectedDate) {
                 selectCustomDay(selectedDate);
             }
@@ -717,19 +919,11 @@
         
         // View details button
         document.getElementById('viewDetailsBtn')?.addEventListener('click', () => {
-            if (allDays.length > 0 && currentDayIndex >= 0 && currentDayIndex < allDays.length) {
-                window.location.href = `/Patient/ViewPressureMap?day=${allDays[currentDayIndex]}`;
-            } else {
-                // If viewing a custom date, get it from the label
-                const currentDay = document.getElementById('currentViewingDay').textContent;
-                if (currentDay !== '--/--/----') {
-                    // Convert MM/DD/YYYY back to yyyy-MM-dd
-                    const parts = currentDay.split('/');
-                    if (parts.length === 3) {
-                        const isoDate = `${parts[2]}-${parts[0].padStart(2, '0')}-${parts[1].padStart(2, '0')}`;
-                        window.location.href = `/Patient/ViewPressureMap?day=${isoDate}`;
-                    }
-                }
+            // Get day from current selection or custom date
+            const day = (currentDayIndex >= 0 && currentDayIndex < allDays.length) ? allDays[currentDayIndex] : document.getElementById('calendarInput')?.value;
+            
+            if (day) {
+                window.location.href = `/Patient/ViewPressureMap?day=${day}`;
             }
         });
     </script>
