@@ -102,6 +102,9 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                     {
                         if (!int.TryParse(str, out int result)) break;
                         
+                        // Must be within valid range (0-255)
+                        result = Math.Clamp(result, 0, 255);
+                        
                         currentMatrix[currentRow][currentColumn] = result;
                         currentColumn++;
                     }
@@ -376,5 +379,167 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             rangeEnd = rangeEnd.ToString("o"),
             points = framePoints
         });
+    }
+    
+    /// <summary>
+    /// Gets comparison metrics between the current day and previous day, and same hour yesterday.
+    /// Returns key metrics with percentage changes for user-friendly display.
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetComparison(string? day)
+    {
+        var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userIdStr) || !int.TryParse(userIdStr, out var userId))
+        {
+            return Unauthorized();
+        }
+
+        if (string.IsNullOrWhiteSpace(day) || !DateOnly.TryParse(day, out var dateOnly))
+        {
+            return BadRequest("day parameter required (yyyy-MM-dd)");
+        }
+
+        var patient = await context.Patients
+            .Include(p => p.PressureMaps)
+            .ThenInclude(pm => pm.Frames)
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (patient == null) return NotFound();
+
+        // Get current day's map
+        var currentMap = patient.PressureMaps.FirstOrDefault(pm => pm.Day == dateOnly);
+        if (currentMap == null || currentMap.Frames.Count == 0)
+        {
+            return Json(new { hasData = false });
+        }
+
+        // Get previous day's map
+        var previousDay = dateOnly.AddDays(-1);
+        var previousMap = patient.PressureMaps.FirstOrDefault(pm => pm.Day == previousDay);
+
+        // Calculate metrics for current day
+        var currentMetrics = CalculateDayMetrics(currentMap.Frames);
+
+        // Calculate metrics for previous day (if exists)
+        DayMetrics? previousMetrics = null;
+        if (previousMap != null && previousMap.Frames.Count > 0)
+        {
+            previousMetrics = CalculateDayMetrics(previousMap.Frames);
+        }
+
+        // Calculate "this hour yesterday" comparison
+        var currentHour = DateTime.Now.Hour;
+        HourMetrics? currentHourMetrics = null;
+        HourMetrics? yesterdayHourMetrics = null;
+
+        // Get frames from current hour today
+        var todayHourFrames = currentMap.Frames
+            .Where(f => f.Timestamp.Hour == currentHour)
+            .ToList();
+        if (todayHourFrames.Count > 0)
+        {
+            currentHourMetrics = CalculateHourMetrics(todayHourFrames);
+        }
+
+        // Get frames from same hour yesterday
+        if (previousMap != null)
+        {
+            var yesterdayHourFrames = previousMap.Frames
+                .Where(f => f.Timestamp.Hour == currentHour)
+                .ToList();
+            if (yesterdayHourFrames.Count > 0)
+            {
+                yesterdayHourMetrics = CalculateHourMetrics(yesterdayHourFrames);
+            }
+        }
+
+        return Json(new
+        {
+            hasData = true,
+            current = currentMetrics,
+            previous = previousMetrics,
+            hasPreviousDay = previousMetrics != null,
+            // Day-to-day changes (percentage)
+            dayChange = previousMetrics != null ? new
+            {
+                avgPressure = CalculatePercentChange(previousMetrics.AvgPressure, currentMetrics.AvgPressure),
+                peakPressure = CalculatePercentChange(previousMetrics.PeakPressure, currentMetrics.PeakPressure),
+                contactArea = CalculatePercentChange(previousMetrics.ContactArea, currentMetrics.ContactArea),
+                duration = CalculatePercentChange(previousMetrics.DurationMinutes, currentMetrics.DurationMinutes)
+            } : null,
+            // Hour comparison
+            currentHour = currentHour,
+            thisHourToday = currentHourMetrics,
+            thisHourYesterday = yesterdayHourMetrics,
+            hourChange = (currentHourMetrics != null && yesterdayHourMetrics != null) ? new
+            {
+                avgPressure = CalculatePercentChange(yesterdayHourMetrics.AvgPressure, currentHourMetrics.AvgPressure),
+                peakPressure = CalculatePercentChange(yesterdayHourMetrics.PeakPressure, currentHourMetrics.PeakPressure)
+            } : null
+        });
+    }
+
+    // Helper class to store day metrics
+    private class DayMetrics
+    {
+        public double AvgPressure { get; set; }
+        public int PeakPressure { get; set; }
+        public double ContactArea { get; set; }
+        public int DurationMinutes { get; set; }
+        public int FrameCount { get; set; }
+    }
+
+    // Helper class to store hour metrics
+    private class HourMetrics
+    {
+        public double AvgPressure { get; set; }
+        public int PeakPressure { get; set; }
+        public int FrameCount { get; set; }
+    }
+
+    // Calculate metrics for a full day
+    private DayMetrics CalculateDayMetrics(ICollection<PressureFrame> frames)
+    {
+        if (frames.Count == 0)
+        {
+            return new DayMetrics();
+        }
+
+        var avgPressure = frames.Average(f => f.AveragePressure);
+        var peakPressure = frames.Max(f => f.PeakPressure);
+        var contactArea = frames.Average(f => f.ContactAreaPercentage);
+        var durationSeconds = frames.Count / FramesPerSecond;
+
+        return new DayMetrics
+        {
+            AvgPressure = Math.Round(avgPressure, 1),
+            PeakPressure = peakPressure,
+            ContactArea = Math.Round(contactArea, 1),
+            DurationMinutes = durationSeconds / 60,
+            FrameCount = frames.Count
+        };
+    }
+
+    // Calculate metrics for a specific hour
+    private HourMetrics CalculateHourMetrics(List<PressureFrame> frames)
+    {
+        if (frames.Count == 0)
+        {
+            return new HourMetrics();
+        }
+
+        return new HourMetrics
+        {
+            AvgPressure = Math.Round(frames.Average(f => f.AveragePressure), 1),
+            PeakPressure = frames.Max(f => f.PeakPressure),
+            FrameCount = frames.Count
+        };
+    }
+
+    // Calculate percentage change between two values
+    private double CalculatePercentChange(double oldValue, double newValue)
+    {
+        if (oldValue == 0) return newValue == 0 ? 0 : 100;
+        return Math.Round(((newValue - oldValue) / oldValue) * 100, 1);
     }
 }
