@@ -117,6 +117,11 @@
         position: relative;
         min-height: 350px;
     }
+    .graph-container {
+        position: relative;
+        height: 350px;
+        width: 100%;
+    }
     .section-title {
         font-weight: bold;
         margin-bottom: 10px;
@@ -430,7 +435,9 @@
                             <div class="spinner"></div>
                         </div>
                         <div class="section-title">Peak Pressure Graph</div>
-                        <canvas id="peakChart"></canvas>
+                        <div class="graph-container">
+                            <canvas id="peakChart"></canvas>
+                        </div>
                         <div class="no-data-message hidden" id="graphNoData">No data for this day</div>
                     </div>
                 </div>
@@ -816,7 +823,7 @@
                 },
                 options: {
                     responsive: true,
-                    maintainAspectRatio: true,
+                    maintainAspectRatio: false,
                     interaction: { mode: 'index', intersect: false },
                     scales: {
                         x: {
