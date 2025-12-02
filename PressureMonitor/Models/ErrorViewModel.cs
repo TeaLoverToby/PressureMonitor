@@ -7,7 +7,7 @@ public class ErrorViewModel
     public bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
     
 }
-
+/*
 //This class is logic to show an error to the clincician when the contact area percentage is too low
 public class ContactAreaError
 {
@@ -50,8 +50,8 @@ public class MinimumPressureError
         actualMinimumPressure = MinValue;
     }
     //Compares the minimum pressure to a minimum threshold value
-    if (actualMinimumPressure < 5)
+    if (actualMinimumPressure > 5)
     {
         throw new ArgumentOutOfRangeException(nameof(MinValue), "Minimum pressure is too low, reseat the patient.");
     }
-}
+}*/
