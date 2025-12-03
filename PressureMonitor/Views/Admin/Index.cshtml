@@ -1,11 +1,118 @@
 ﻿@model Admin
 
 @{
-    ViewData["Title"] = "Admin Dashboard";
+    ViewData["Title"] = "Administrator Dashboard";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Admin Dashboard</h1>
-    <p>Username: @Model.User.Username</p>
-    <p>Not sure what to put here yet.</p>
+<style>
+
+    .main-content-layout {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 20px;
+    }
+
+    .user-section, .user-section2 {
+        border: 2px solid #333;
+        padding: 10px;
+        position: relative;
+        min-height: 350px;
+    }
+
+    .user-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+    }
+
+    .user-title {
+        font-weight: bold;
+    }
+
+    .user-grid {
+
+        display: grid;
+        grid-template-columns: repeat(1, 1fr);
+        gap: 10px 20px;
+    }
+
+    .user-item {
+        font-size: 0.9rem;
+    }
+
+        .user-item span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+    .help-icon {
+        width: 16px;
+        height: 16px;
+        border: 1px solid #333;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        cursor: help;
+    }
+
+    .view-details-btn {
+        padding: 8px 30px;
+        background: #cca808;
+        border: 2px solid #333;
+        font-weight: bold;
+        cursor: pointer;
+    }
+
+        .view-details-btn:hover {
+            background: #e7e07b;
+        }
+
+</style>
+
+<div class="container-fluid">
+    <div class="dashboard-header">
+        <div class="dashboard-title-section">
+            <div>
+                <h1>Administrator Dashboard</h1>
+                <p>Welcome back, @Model.User.Username!</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="main-content-layout">
+
+    <div class="user-section">
+        <div class="user-header">
+            <div class="user-title">User data</div>
+        </div>
+        <div class="user-grid">
+            <div class="user-item">Username: <span id="username">-</span></div>
+            <div class="user-item">Email: <span id="email">-</span></div>
+            <div class="user-item">Password: <span id="password">-</span></div>
+            <div class="user-item">User type: <span id="usertype">-</span></div>
+        </div>
+    </div>
+
+
+    <div class="user-section2">
+        <div class="user-header">
+            <div class="user-title">User data</div>
+        </div>
+        <div class="user-grid">
+            <div class="user-item">Username: <span id="username">-</span></div>
+            <div class="user-item">Email: <span id="email">-</span></div>
+            <div class="user-item">Password: <span id="password">-</span></div>
+            <div class="user-item">User type: <span id="usertype">-</span></div>
+        </div>
+    </div>
+
+</div>
+
+</<div>
+    <button class="view-details-btn" id="viewDetailsBtn">VIEW</button>
 </div>
