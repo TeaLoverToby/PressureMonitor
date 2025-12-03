@@ -17,7 +17,7 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Upload(IFormFile file)
+    public async Task<IActionResult> Upload(IFormFile file, string? startTime, bool useCurrentTime = false)
     {
         // Get the user ID from the cookie
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -70,6 +70,24 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 return RedirectToAction("Upload", "Patient");
             }
 
+            // Get the start time for the session
+            DateTime sessionStartTime;
+            if (useCurrentTime)
+            {
+                // Use current time but keep the date from the file name
+                var now = DateTime.Now;
+                sessionStartTime = new DateTime(date.Year, date.Month, date.Day, now.Hour, now.Minute, now.Second);
+            }
+            else if (!string.IsNullOrWhiteSpace(startTime) && TimeOnly.TryParse(startTime, out var parsedTime))
+            {
+                sessionStartTime = new DateTime(date.Year, date.Month, date.Day, parsedTime.Hour, parsedTime.Minute, 0);
+            }
+            else
+            {
+                // Default to midnight if there was no specified time
+                sessionStartTime = date;
+            }
+
             // So, what we want to assume is that a CSV file contains 32x32 matricies in a time-order
             // The software is 15FPS, so each second of data is 15 matricies.
             
@@ -81,7 +99,7 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             {
                 currentMatrix[i] = new int[32];
             }
-            DateTime lastTime = date;
+            DateTime lastTime = sessionStartTime;
 
             // Collect all frames in memory first
             List<PressureFrame> frames = new List<PressureFrame>();
@@ -145,13 +163,35 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
 
             var day = DateOnly.FromDateTime(date);
             
-            // Since CSV files are assumed to represent a full-day, we will overwrite any existing data for that day if it exists
-            var existingMap = await context.PressureMaps.Include(pm => pm.Frames).FirstOrDefaultAsync(pm => pm.PatientId == patient.Id && pm.Day == day);
-            if (existingMap != null)
+            // Need to get the start and end time for the session
+            var newSessionStart = frames.Min(f => f.Timestamp);
+            var newSessionEnd = frames.Max(f => f.Timestamp);
+            
+            // Get maps that are on the same day
+            var existingMaps = await context.PressureMaps
+                .Include(pm => pm.Frames)
+                .Where(pm => pm.PatientId == patient.Id && pm.Day == day)
+                .ToListAsync();
+            
+            // Findsessions  that overlap swith the new session's time range
+            var overlapSessions = existingMaps.Where(pm =>
             {
-                // The frames are automatically deleted due to the "cascade" rule in ApplicationDBContext
-                context.PressureMaps.Remove(existingMap); 
+                if (pm.Frames.Count == 0) return false;
+                var existingStart = pm.Frames.Min(f => f.Timestamp);
+                var existingEnd = pm.Frames.Max(f => f.Timestamp);
+                // We check an overlap by seeing if the new session starts before the existing one ends
+                return newSessionStart <= existingEnd && newSessionEnd >= existingStart;
+            }).ToList();
+            
+            // Remove overlapping sessions
+            if (overlapSessions.Count > 0)
+            {
+                foreach (var overlapping in overlapSessions)
+                {
+                    context.PressureMaps.Remove(overlapping);
+                }
                 await context.SaveChangesAsync();
+                logger.LogInformation("Removed {Count} overlapping session(s) for patient {PatientId} on {Day}", overlapSessions.Count, patient.Id, day);
             }
             
             PressureMap map = new PressureMap()
@@ -174,8 +214,10 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 return RedirectToAction("Upload", "Patient");
             }
 
-            TempData["Success"] = existingMap == null ? $"Uploaded {frames.Count} frames for {day:yyyy-MM-dd}." : $"Overwrote existing data and uploaded {frames.Count} frames for {day:yyyy-MM-dd}.";
-            logger.LogInformation("Uploaded {FrameCount} frames for patient {PatientId} (overwrite={Overwrite})", frames.Count, patient.Id, existingMap != null);
+            var endTimeStr = newSessionEnd.ToString("HH:mm");
+            var startTimeStr = newSessionStart.ToString("HH:mm");
+            TempData["Success"] = $"Uploaded {frames.Count} frames for {day:yyyy-MM-dd} ({startTimeStr} - {endTimeStr}).";
+            logger.LogInformation("Uploaded {FrameCount} frames for patient {PatientId} on {Day} starting at {StartTime}", frames.Count, patient.Id, day, sessionStartTime);
             return RedirectToAction("Upload", "Patient");
         }
         catch (Exception ex)
@@ -229,15 +271,18 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         
         if (patient == null) return NotFound();
 
-        var map = patient.PressureMaps.FirstOrDefault(pm => pm.Day == dateOnly);
-        if (map == null) return Json(new { averageMap = new int[0][] });
+        // Get all pressure maps for the requested day
+        var mapsForDay = patient.PressureMaps.Where(pm => pm.Day == dateOnly).ToList();
+        // Empty result if no maps
+        if (mapsForDay.Count == 0) return Json(new { averageMap = new int[0][] });
         
-        // Calculate time range (same logic as getPressureGraphData)
-        var dayStart = new DateTime(map.Day.Year, map.Day.Month, map.Day.Day, 0, 0, 0, DateTimeKind.Unspecified);
+        // Calculate time range
+        var dayStart = new DateTime(dateOnly.Year, dateOnly.Month, dateOnly.Day, 0, 0, 0, DateTimeKind.Unspecified);
         var dayEnd = dayStart.AddDays(1);
         DateTime rangeStart = dayStart;
         DateTime rangeEnd = dayEnd;
 
+        // Hours back means how many hours we go back from the end of the day
         if (hoursBack.HasValue && hoursBack.Value > 0)
         {
             rangeStart = dayEnd.AddHours(-hoursBack.Value);
@@ -255,8 +300,9 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             }
         }
 
-        // Filter frames by time range
-        var filteredFrames = map.Frames
+        // Combine frames from all sessions for this day amd then filter by time range
+        var filteredFrames = mapsForDay
+            .SelectMany(m => m.Frames)
             .Where(f => f.Timestamp >= rangeStart && f.Timestamp < rangeEnd)
             .ToList();
 
@@ -323,19 +369,19 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         
         if (patient == null) return NotFound();
 
-        // Check if there is a pressure map that matches the requested day
-        var map = patient.PressureMaps.FirstOrDefault(pm => pm.Day == dateOnly);
-        if (map == null) return Json(Array.Empty<object>()); // No data!
+        // Get all pressure maps for the requested day
+        var mapsForDay = patient.PressureMaps.Where(pm => pm.Day == dateOnly).ToList();
+        if (mapsForDay.Count == 0) return Json(Array.Empty<object>()); // No data!
 
-        // This is th range that the user will filter by (initially the full day)
-        var dayStart = new DateTime(map.Day.Year, map.Day.Month, map.Day.Day, 0, 0, 0, DateTimeKind.Unspecified);
+        // This is the range that the user will filter by (initially the full day)
+        var dayStart = new DateTime(dateOnly.Year, dateOnly.Month, dateOnly.Day, 0, 0, 0, DateTimeKind.Unspecified);
         var dayEnd = dayStart.AddDays(1);
 
         DateTime rangeStart = dayStart;
         DateTime rangeEnd = dayEnd;
 
         // Hours back means how many hours we go back from the end of the day
-        // FOr example, if hoursBack was 2, and day was 2025-10-18, then the range would be 2024-10-18 22:00 to 2024-10-18 00:00
+        // For example, if hoursBack was 2, and day was 2025-10-18, then the range would be 2024-10-18 22:00 to 2024-10-18 00:00
         if (hoursBack.HasValue && hoursBack.Value > 0)
         {
             rangeStart = dayEnd.AddHours(-hoursBack.Value);
@@ -354,8 +400,9 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             }
         }
 
-        // Get the frames within the timestamp range
-        var filteredFrames = map.Frames
+        // Combine frames from all sessions for this day then filter by time range
+        var filteredFrames = mapsForDay
+            .SelectMany(m => m.Frames)
             .Where(f => f.Timestamp >= rangeStart && f.Timestamp < rangeEnd)
             .OrderBy(f => f.Timestamp)
             .ToList();
@@ -374,172 +421,53 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
 
         // Returned as JSON so the graph can parse it
         return Json(new {
-            day = map.Day.ToString("yyyy-MM-dd"),
+            day = dateOnly.ToString("yyyy-MM-dd"),
             rangeStart = rangeStart.ToString("o"),
             rangeEnd = rangeEnd.ToString("o"),
             points = framePoints
         });
     }
     
-    /// <summary>
-    /// Gets comparison metrics between the current day and previous day, and same hour yesterday.
-    /// Returns key metrics with percentage changes for user-friendly display.
-    /// </summary>
-    [HttpGet]
-    public async Task<IActionResult> GetComparison(string? day)
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userIdStr) || !int.TryParse(userIdStr, out var userId))
         {
-            return Unauthorized();
+            TempData["Error"] = "Patient not found. Please log in again.";
+            return RedirectToAction("Login", "Account");
         }
 
-        if (string.IsNullOrWhiteSpace(day) || !DateOnly.TryParse(day, out var dateOnly))
+        // Get the patient
+        var patient = await context.Patients.FirstOrDefaultAsync(p => p.UserId == userId);
+        
+        if (patient == null)
         {
-            return BadRequest("day parameter required (yyyy-MM-dd)");
+            TempData["Error"] = "Patient not found.";
+            return RedirectToAction("Upload", "Patient");
         }
 
-        var patient = await context.Patients
-            .Include(p => p.PressureMaps)
-            .ThenInclude(pm => pm.Frames)
-            .FirstOrDefaultAsync(p => p.UserId == userId);
+        // Find the pressure map and check that it belongs to the patient (incase it was already deleted)
+        var map = await context.PressureMaps
+            .Include(pm => pm.Frames)
+            .FirstOrDefaultAsync(pm => pm.Id == id && pm.PatientId == patient.Id);
 
-        if (patient == null) return NotFound();
-
-        // Get current day's map
-        var currentMap = patient.PressureMaps.FirstOrDefault(pm => pm.Day == dateOnly);
-        if (currentMap == null || currentMap.Frames.Count == 0)
+        if (map == null)
         {
-            return Json(new { hasData = false });
+            TempData["Error"] = "Pressure map was not found.";
+            return RedirectToAction("Upload", "Patient");
         }
 
-        // Get previous day's map
-        var previousDay = dateOnly.AddDays(-1);
-        var previousMap = patient.PressureMaps.FirstOrDefault(pm => pm.Day == previousDay);
+        var day = map.Day;
+        var frameCount = map.Frames.Count;
 
-        // Calculate metrics for current day
-        var currentMetrics = CalculateDayMetrics(currentMap.Frames);
+        // Delete the pressure map
+        context.PressureMaps.Remove(map);
+        await context.SaveChangesAsync();
 
-        // Calculate metrics for previous day (if exists)
-        DayMetrics? previousMetrics = null;
-        if (previousMap != null && previousMap.Frames.Count > 0)
-        {
-            previousMetrics = CalculateDayMetrics(previousMap.Frames);
-        }
-
-        // Calculate "this hour yesterday" comparison
-        var currentHour = DateTime.Now.Hour;
-        HourMetrics? currentHourMetrics = null;
-        HourMetrics? yesterdayHourMetrics = null;
-
-        // Get frames from current hour today
-        var todayHourFrames = currentMap.Frames
-            .Where(f => f.Timestamp.Hour == currentHour)
-            .ToList();
-        if (todayHourFrames.Count > 0)
-        {
-            currentHourMetrics = CalculateHourMetrics(todayHourFrames);
-        }
-
-        // Get frames from same hour yesterday
-        if (previousMap != null)
-        {
-            var yesterdayHourFrames = previousMap.Frames
-                .Where(f => f.Timestamp.Hour == currentHour)
-                .ToList();
-            if (yesterdayHourFrames.Count > 0)
-            {
-                yesterdayHourMetrics = CalculateHourMetrics(yesterdayHourFrames);
-            }
-        }
-
-        return Json(new
-        {
-            hasData = true,
-            current = currentMetrics,
-            previous = previousMetrics,
-            hasPreviousDay = previousMetrics != null,
-            // Day-to-day changes (percentage)
-            dayChange = previousMetrics != null ? new
-            {
-                avgPressure = CalculatePercentChange(previousMetrics.AvgPressure, currentMetrics.AvgPressure),
-                peakPressure = CalculatePercentChange(previousMetrics.PeakPressure, currentMetrics.PeakPressure),
-                contactArea = CalculatePercentChange(previousMetrics.ContactArea, currentMetrics.ContactArea),
-                duration = CalculatePercentChange(previousMetrics.DurationMinutes, currentMetrics.DurationMinutes)
-            } : null,
-            // Hour comparison
-            currentHour = currentHour,
-            thisHourToday = currentHourMetrics,
-            thisHourYesterday = yesterdayHourMetrics,
-            hourChange = (currentHourMetrics != null && yesterdayHourMetrics != null) ? new
-            {
-                avgPressure = CalculatePercentChange(yesterdayHourMetrics.AvgPressure, currentHourMetrics.AvgPressure),
-                peakPressure = CalculatePercentChange(yesterdayHourMetrics.PeakPressure, currentHourMetrics.PeakPressure)
-            } : null
-        });
-    }
-
-    // Helper class to store day metrics
-    private class DayMetrics
-    {
-        public double AvgPressure { get; set; }
-        public int PeakPressure { get; set; }
-        public double ContactArea { get; set; }
-        public int DurationMinutes { get; set; }
-        public int FrameCount { get; set; }
-    }
-
-    // Helper class to store hour metrics
-    private class HourMetrics
-    {
-        public double AvgPressure { get; set; }
-        public int PeakPressure { get; set; }
-        public int FrameCount { get; set; }
-    }
-
-    // Calculate metrics for a full day
-    private DayMetrics CalculateDayMetrics(ICollection<PressureFrame> frames)
-    {
-        if (frames.Count == 0)
-        {
-            return new DayMetrics();
-        }
-
-        var avgPressure = frames.Average(f => f.AveragePressure);
-        var peakPressure = frames.Max(f => f.PeakPressure);
-        var contactArea = frames.Average(f => f.ContactAreaPercentage);
-        var durationSeconds = frames.Count / FramesPerSecond;
-
-        return new DayMetrics
-        {
-            AvgPressure = Math.Round(avgPressure, 1),
-            PeakPressure = peakPressure,
-            ContactArea = Math.Round(contactArea, 1),
-            DurationMinutes = durationSeconds / 60,
-            FrameCount = frames.Count
-        };
-    }
-
-    // Calculate metrics for a specific hour
-    private HourMetrics CalculateHourMetrics(List<PressureFrame> frames)
-    {
-        if (frames.Count == 0)
-        {
-            return new HourMetrics();
-        }
-
-        return new HourMetrics
-        {
-            AvgPressure = Math.Round(frames.Average(f => f.AveragePressure), 1),
-            PeakPressure = frames.Max(f => f.PeakPressure),
-            FrameCount = frames.Count
-        };
-    }
-
-    // Calculate percentage change between two values
-    private double CalculatePercentChange(double oldValue, double newValue)
-    {
-        if (oldValue == 0) return newValue == 0 ? 0 : 100;
-        return Math.Round(((newValue - oldValue) / oldValue) * 100, 1);
+        TempData["Success"] = $"Deleted session from {day:yyyy-MM-dd} ({frameCount} frames).";
+        logger.LogInformation("Deleted pressure map {MapId} for patient {PatientId} ({FrameCount} frames)", id, patient.Id, frameCount);
+        return RedirectToAction("Upload", "Patient");
     }
 }

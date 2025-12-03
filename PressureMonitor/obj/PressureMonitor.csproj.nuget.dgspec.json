@@ -1,20 +1,20 @@
 {
   "format": 1,
   "restore": {
-    "/home/tobyw/Desktop/PressureMonitor/PressureMonitor/PressureMonitor.csproj": {}
+    "C:\\Users\\tobyw\\RiderProjects\\PressureMonitor\\PressureMonitor\\PressureMonitor.csproj": {}
   },
   "projects": {
-    "/home/tobyw/Desktop/PressureMonitor/PressureMonitor/PressureMonitor.csproj": {
+    "C:\\Users\\tobyw\\RiderProjects\\PressureMonitor\\PressureMonitor\\PressureMonitor.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/tobyw/Desktop/PressureMonitor/PressureMonitor/PressureMonitor.csproj",
+        "projectUniqueName": "C:\\Users\\tobyw\\RiderProjects\\PressureMonitor\\PressureMonitor\\PressureMonitor.csproj",
         "projectName": "PressureMonitor",
-        "projectPath": "/home/tobyw/Desktop/PressureMonitor/PressureMonitor/PressureMonitor.csproj",
-        "packagesPath": "/home/tobyw/.nuget/packages/",
-        "outputPath": "/home/tobyw/Desktop/PressureMonitor/PressureMonitor/obj/",
+        "projectPath": "C:\\Users\\tobyw\\RiderProjects\\PressureMonitor\\PressureMonitor\\PressureMonitor.csproj",
+        "packagesPath": "C:\\Users\\tobyw\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\tobyw\\RiderProjects\\PressureMonitor\\PressureMonitor\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/home/tobyw/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\tobyw\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
@@ -44,6 +44,10 @@
         "net9.0": {
           "targetAlias": "net9.0",
           "dependencies": {
+            "DocumentFormat.OpenXml": {
+              "target": "Package",
+              "version": "[3.3.0, )"
+            },
             "Microsoft.EntityFrameworkCore": {
               "target": "Package",
               "version": "[9.0.9, )"
@@ -61,6 +65,10 @@
             "Microsoft.EntityFrameworkCore.Sqlite": {
               "target": "Package",
               "version": "[9.0.9, )"
+            },
+            "QuestPDF": {
+              "target": "Package",
+              "version": "[2025.7.4, )"
             },
             "SqlDatabase": {
               "target": "Package",
@@ -86,7 +94,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/9.0.306/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.305/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
