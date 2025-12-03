@@ -18,6 +18,8 @@
         <!-- We might not need SQLServer anymore as we are using Sqlite for self-host -->
         <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.9" />
         <PackageReference Include="SqlDatabase" Version="4.4.0" />
+        <PackageReference Include="QuestPDF" Version="2025.7.4" />
+        <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
     </ItemGroup>
 
 
