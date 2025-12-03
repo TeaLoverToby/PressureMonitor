@@ -62,11 +62,12 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         
         if (patient == null) return NotFound();
 
-        var map = patient.PressureMaps.FirstOrDefault(pm => pm.Day == dateOnly);
-        if (map == null) return Json(new { averageMap = new int[0][] });
+        // Get all pressure maps for the requested day
+        var mapsForDay = patient.PressureMaps.Where(pm => pm.Day == dateOnly).ToList();
+        if (mapsForDay.Count == 0) return Json(new { averageMap = new int[0][] });
         
-        // Calculate time range (same logic as getPressureGraphData)
-        var dayStart = new DateTime(map.Day.Year, map.Day.Month, map.Day.Day, 0, 0, 0, DateTimeKind.Unspecified);
+        // Calculate time range
+        var dayStart = new DateTime(dateOnly.Year, dateOnly.Month, dateOnly.Day, 0, 0, 0, DateTimeKind.Unspecified);
         var dayEnd = dayStart.AddDays(1);
         DateTime rangeStart = dayStart;
         DateTime rangeEnd = dayEnd;
@@ -88,8 +89,9 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             }
         }
 
-        // Filter frames by time range
-        var filteredFrames = map.Frames
+        // We need to combine the frames from all sessions for this day amd tjem filter byu time range
+        var filteredFrames = mapsForDay
+            .SelectMany(m => m.Frames)
             .Where(f => f.Timestamp >= rangeStart && f.Timestamp < rangeEnd)
             .ToList();
 
@@ -158,12 +160,12 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         
         if (patient == null) return NotFound();
 
-        // Check if there is a pressure map that matches the requested day
-        var map = patient.PressureMaps.FirstOrDefault(pm => pm.Day == dateOnly);
-        if (map == null) return Json(Array.Empty<object>()); // No data!
+        // Get all pressure maps for the requested day
+        var mapsForDay = patient.PressureMaps.Where(pm => pm.Day == dateOnly).ToList();
+        if (mapsForDay.Count == 0) return Json(Array.Empty<object>()); // No data!
 
         // This is the range that the user will filter by (initially the full day)
-        var dayStart = new DateTime(map.Day.Year, map.Day.Month, map.Day.Day, 0, 0, 0, DateTimeKind.Unspecified);
+        var dayStart = new DateTime(dateOnly.Year, dateOnly.Month, dateOnly.Day, 0, 0, 0, DateTimeKind.Unspecified);
         var dayEnd = dayStart.AddDays(1);
 
         DateTime rangeStart = dayStart;
@@ -189,8 +191,9 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             }
         }
 
-        // Get the frames within the timestamp range
-        var filteredFrames = map.Frames
+        // We need to combine from all sessions for this day then filter by time range
+        var filteredFrames = mapsForDay
+            .SelectMany(m => m.Frames)
             .Where(f => f.Timestamp >= rangeStart && f.Timestamp < rangeEnd)
             .OrderBy(f => f.Timestamp)
             .ToList();
@@ -208,7 +211,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
 
         // Returned as JSON so the graph can parse it
         return Json(new {
-            day = map.Day.ToString("yyyy-MM-dd"),
+            day = dateOnly.ToString("yyyy-MM-dd"),
             rangeStart = rangeStart.ToString("o"),
             rangeEnd = rangeEnd.ToString("o"),
             points = framePoints
@@ -236,12 +239,15 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
 
         if (patient == null) return NotFound();
 
-        // Find the pressure map for the specified day
-        var map = patient.PressureMaps.FirstOrDefault(pm => pm.Day == dateOnly);
-        if (map == null) return NotFound("No data found for this day.");
+        // Get all pressure maps for the requested day
+        var mapsForDay = patient.PressureMaps.Where(pm => pm.Day == dateOnly).ToList();
+        if (mapsForDay.Count == 0) return NotFound("No data found for this day.");
 
-        // Order the frames by their timestamp (ascending)
-        var frames = map.Frames.OrderBy(f => f.Timestamp).ToList();
+        // We need to combine and order all frames from all sessions by timestamp
+        var frames = mapsForDay
+            .SelectMany(m => m.Frames)
+            .OrderBy(f => f.Timestamp)
+            .ToList();
 
         var sb = new StringBuilder();
         // Iterate through each frame and append its data to the string builder
@@ -278,23 +284,20 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             return BadRequest("Invalid day format");
         }
 
-        // Get the patient ID
-        var patientId = await context.Patients
-            .Where(p => p.UserId == userId)
-            .Select(p => p.Id)
-            .FirstOrDefaultAsync();
+        // Get the patient with their pressure maps
+        var patient = await context.Patients
+            .Include(p => p.PressureMaps)
+            .ThenInclude(pm => pm.Frames)
+            .FirstOrDefaultAsync(p => p.UserId == userId);
 
-        if (patientId == 0) return NotFound();
+        if (patient == null) return NotFound();
 
-        // Get the pressure map for the given day
-        var map = await context.PressureMaps
-            .Include(pm => pm.Frames)
-            .FirstOrDefaultAsync(pm => pm.PatientId == patientId && pm.Day == dateOnly);
+        // Get all pressure maps for the requested day
+        var mapsForDay = patient.PressureMaps.Where(pm => pm.Day == dateOnly).ToList();
+        if (mapsForDay.Count == 0) return NotFound("No data found for this day.");
 
-        if (map == null) return NotFound("No data found for this day.");
-
-        // Calculate statistics
-        var (reportData, topRegions) = CalculateReportData(map, patientId, dateOnly);
+        // Calculate statistics from all the sessions/maps
+        var (reportData, topRegions) = CalculateReportData(mapsForDay, patient.Id, dateOnly);
 
         // Generate report based on format
         return format.ToLower() switch
@@ -304,26 +307,36 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             _ => GenerateTxtReport(reportData, topRegions, dateOnly)
         };
     }
-
-    private (ReportData data, List<(int r, int c, double avg)> topRegions) CalculateReportData(PressureMap map, int patientId, DateOnly dateOnly)
+    
+    private (ReportData data, List<(int r, int c, double avg)> topRegions) CalculateReportData(List<PressureMap> maps, int patientId, DateOnly dateOnly)
     {
-        var frames = map.Frames.OrderBy(f => f.Timestamp).ToList();
+        // Combine all frames from all sessions
+        var frames = maps
+            .SelectMany(m => m.Frames)
+            .OrderBy(f => f.Timestamp)
+            .ToList();
+            
         if (frames.Count == 0)
         {
             // Basically an empty data report
             return (new ReportData
             {
                 PatientId = patientId,
-                MapId = map.Id,
+                MapList = maps.Select(m => m.Id).ToList(),
                 Day = dateOnly,
                 FrameCount = 0,
                 StartTime = DateTime.Now,
                 EndTime = DateTime.Now,
-                Duration = TimeSpan.Zero
+                Duration = TimeSpan.Zero,
+                MinPressure = 0,
+                MaxPressure = 0,
+                OverallAverage = 0,
+                MaxPeakPressure = 0,
+                AverageContactArea = 0
             }, new List<(int, int, double)>());
         }
 
-        // Calculate the statistics for the report
+      // Calculate the statistics for the report
         int maxPressure = 0;
         int minPressure = int.MaxValue;
         int maxPeakPressure = 0;
@@ -384,7 +397,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         var reportData = new ReportData
         {
             PatientId = patientId,
-            MapId = map.Id,
+            MapList = maps.Select(m => m.Id).ToList(),
             Day = dateOnly,
             FrameCount = frames.Count,
             StartTime = startTime,
@@ -402,13 +415,14 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         return (reportData, topRegions);
     }
 
+
     private IActionResult GenerateTxtReport(ReportData data, List<(int r, int c, double avg)> topRegions, DateOnly dateOnly)
     {
         var sb = new StringBuilder();
         sb.AppendLine($"Pressure Map Report for {dateOnly:yyyy-MM-dd}");
         sb.AppendLine("========================================");
         sb.AppendLine($"Patient ID: {data.PatientId}");
-        sb.AppendLine($"Pressure Map ID: {data.MapId}");
+        sb.AppendLine($"Sessions: {data.MapList.Count}");
         sb.AppendLine($"Report Generated: {DateTime.Now}");
         sb.AppendLine("========================================");
         sb.AppendLine($"Recording Start: {data.StartTime:HH:mm:ss}");
@@ -449,7 +463,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             AddParagraph(body, $"Pressure Map Report for {dateOnly:yyyy-MM-dd}");
             AddParagraph(body, "========================================");
             AddParagraph(body, $"Patient ID: {data.PatientId}");
-            AddParagraph(body, $"Pressure Map ID: {data.MapId}");
+            AddParagraph(body, $"Sessions: {data.MapList.Count}");
             AddParagraph(body, $"Report Generated: {DateTime.Now}");
             AddParagraph(body, "========================================");
             AddParagraph(body, $"Recording Start: {data.StartTime:HH:mm:ss}");
@@ -506,7 +520,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
                         
                         col.Item().Text("Report Information").SemiBold().FontSize(14);
                         col.Item().Text($"Patient ID: {data.PatientId}");
-                        col.Item().Text($"Pressure Map ID: {data.MapId}");
+                        col.Item().Text($"Sessions: {data.MapList.Count}");
                         col.Item().Text($"Report Generated: {DateTime.Now}");
                         
                         col.Item().PaddingTop(10);
@@ -548,7 +562,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
     private class ReportData
     {
         public int PatientId { get; set; }
-        public int MapId { get; set; }
+        public List<int> MapList { get; set; }
         public DateOnly Day { get; set; }
         public int FrameCount { get; set; }
         public DateTime StartTime { get; set; }
