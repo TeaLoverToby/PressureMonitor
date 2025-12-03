@@ -8,7 +8,7 @@
     .page-title {
         font-size: 2rem;
         font-weight: bold;
-        color: #8B4513;
+        color: #13438b
         margin-bottom: 20px;
     }
     
@@ -165,6 +165,30 @@
     .btn-edit { background: #FFD700; }
     .btn-delete { background: #FF6347; color: #fff; }
     
+    .report-form {
+        display: flex;
+        gap: 0;
+        align-items: stretch;
+        width: 100%;
+    }
+    
+    .report-format-select {
+        flex: 1;
+        padding: 10px 20px;
+        border: 2px solid #333;
+        border-right: none;
+        font-weight: bold;
+        background: #fff;
+        cursor: pointer;
+        font-family: inherit;
+        text-align: center;
+    }
+    
+    .report-submit-btn {
+        flex: 1;
+        border-left: 2px solid #333;
+    }
+    
     .comments-section {
         border: 2px solid #333;
         padding: 15px;
@@ -284,6 +308,14 @@
         border-radius: 50%;
         animation: spin 1s linear infinite;
     }
+    .report-format {
+        flex: 1;
+        padding: 10px;
+        border: 2px solid #333;
+        font-weight: bold;
+        background: #fff;
+        cursor: pointer;
+    }
     @@keyframes spin {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
@@ -359,7 +391,17 @@
                     <div class="action-buttons">
                         <a asp-controller="File" asp-action="DownloadCsv" asp-route-day="@Model.Day.ToString("yyyy-MM-dd")" class="action-btn btn-download">DOWNLOAD</a>
                         <button class="action-btn btn-flag" id="flagBtn">FLAG</button>
-                        <a asp-controller="File" asp-action="DownloadReport" asp-route-day="@Model.Day.ToString("yyyy-MM-dd")" class="action-btn btn-edit">REPORT</a>
+                        <!-- This will allow the user to download reports usinbg different method types-->
+                        <form asp-controller="File" asp-action="DownloadReport" method="get" class="report-form">
+                            <!-- Hidden but used for parsing through to the controller -->
+                            <input type="hidden" name="day" value="@Model.Day.ToString("yyyy-MM-dd")" />
+                            <select name="format" class="report-format-select">
+                                <option value="txt">Text (.txt)</option>
+                                <option value="docx">Word (.docx)</option>
+                                <option value="pdf">PDF (.pdf)</option>
+                            </select>
+                            <button type="submit" class="action-btn btn-edit report-submit-btn">VIEW REPORT</button>
+                        </form>
                         <a asp-action="Index" class="action-btn btn-delete">BACK</a>
                     </div>
                 </div>
