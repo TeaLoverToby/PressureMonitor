@@ -5,6 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Data.SQLite;
 using System.Configuration;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace PressureMonitor.Models;
 
@@ -77,5 +78,7 @@ public class Admin
             return users;
         }
     }
+    [NotMapped]
+    public List<SelectListItem> GetUserItems => GetUsers.Select(x => new SelectListItem(x.Username, x.Id.ToString())).ToList();
 
 }
