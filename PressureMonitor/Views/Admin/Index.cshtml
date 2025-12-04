@@ -8,15 +8,16 @@
 
     .main-content-layout {
         display: grid;
-        grid-template-columns: 2fr 1fr;
+        grid-template-columns: 1fr 1fr;
         gap: 20px;
     }
 
-    .user-section, .user-section2 {
+    .user-list-section, .user-info-section {
         border: 2px solid #333;
         padding: 10px;
         position: relative;
         min-height: 350px;
+        max-width: 600px;
     }
 
     .user-header {
@@ -47,6 +48,12 @@
             gap: 5px;
         }
 
+    .usertype {
+        height: 30px;
+        max-width: contain;
+    }
+
+
     .help-icon {
         width: 16px;
         height: 16px;
@@ -59,12 +66,20 @@
         cursor: help;
     }
 
-    .view-details-btn {
-        padding: 8px 30px;
+    .btn-layout {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        margin-top: 20px;
+    }
+
+    .create-btn, .edit-btn, .delete-btn {
+       
         background: #cca808;
         border: 2px solid #333;
         font-weight: bold;
         cursor: pointer;
+        width: 100px;
+        height: 40px;
     }
 
         .view-details-btn:hover {
@@ -86,33 +101,50 @@
 
 <div class="main-content-layout">
 
-    <div class="user-section">
+    <div class="user-list-section">
         <div class="user-header">
             <div class="user-title">User data</div>
+        </div>
+        <div class="user-grid">
+            <select size="10" name="users" id="users">
+                <option value="0">Avon</option>
+                <option value="1">Vila</option>
+                <option value="2">Blake</option>
+                <option value="3">Jenna</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="user-info-section">
+        <div class="user-header">
+            <div class="user-title">Selected User Info</div>
         </div>
         <div class="user-grid">
             <div class="user-item">Username: <span id="username">-</span></div>
             <div class="user-item">Email: <span id="email">-</span></div>
             <div class="user-item">Password: <span id="password">-</span></div>
-            <div class="user-item">User type: <span id="usertype">-</span></div>
-        </div>
-    </div>
+            <div class="user-item">FullName: <span id="fullname">-</span></div>
+            <div class="user-item">DateOfBirth: <span id="dateofbirth">-</span></div>
+            <select name="usertype" id="usertype">
+                <option value="0">Patient</option>
+                <option value="1">Clinician</option>
+                <option value="2">Admin</option>
+            </select>
+            <div class="btn-layout">
+                <div>
+                    <button class="create-btn" id="createBtn">Create</button>
+                </div>
 
+                <div>
+                    <button class="edit-btn" id="editBtn">Edit</button>
+                </div>
 
-    <div class="user-section2">
-        <div class="user-header">
-            <div class="user-title">User data</div>
-        </div>
-        <div class="user-grid">
-            <div class="user-item">Username: <span id="username">-</span></div>
-            <div class="user-item">Email: <span id="email">-</span></div>
-            <div class="user-item">Password: <span id="password">-</span></div>
-            <div class="user-item">User type: <span id="usertype">-</span></div>
+                <div>
+                    <button class="delete-btn" id="deleteBtn">Delete</button>
+                </div>
+            </div>
         </div>
     </div>
 
 </div>
 
-</<div>
-    <button class="view-details-btn" id="viewDetailsBtn">VIEW</button>
-</div>
