@@ -1,8 +1,11 @@
 ﻿using System.Security.Claims;
+using DocumentFormat.OpenXml.Vml.Spreadsheet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.VisualBasic;
 using PressureMonitor.Models;
+
 
 namespace PressureMonitor.Controllers;
 
@@ -26,6 +29,9 @@ public class AdminController(ILogger<AdminController> logger, ApplicationDbConte
         {
             return RedirectToAction("Login", "Account");
         }
+
+        List<UserInfo> UserList = admin.GetUsers;
+
 
         return View(admin);
     }
