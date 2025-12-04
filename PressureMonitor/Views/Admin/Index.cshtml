@@ -1,7 +1,7 @@
 ﻿@model Admin
 
 @{
-    ViewData["Title"] = "Administrator Dashboard";
+     ViewData["Title"] = "Administrator Dashboard";
 }
 
 <style>
@@ -18,6 +18,17 @@
         position: relative;
         min-height: 350px;
         max-width: 600px;
+    }
+
+    #GetUserItems {
+        color: mediumvioletred;
+        height: 450px;
+        width: 100%;
+    }
+
+    .user-listbox {
+        height: 100%;
+        overflow-y: scroll;
     }
 
     .user-header {
@@ -99,52 +110,51 @@
     </div>
 </div>
 
-<div class="main-content-layout">
 
-    <div class="user-list-section">
-        <div class="user-header">
-            <div class="user-title">User data</div>
-        </div>
-        <div class="user-grid">
-            <select size="10" name="users" id="users">
-                <option value="0">Avon</option>
-                <option value="1">Vila</option>
-                <option value="2">Blake</option>
-                <option value="3">Jenna</option>
-            </select>
-        </div>
-    </div>
+<form asp-action="HandleUsers method="post">
+        @Html.AntiForgeryToken()
 
-    <div class="user-info-section">
-        <div class="user-header">
-            <div class="user-title">Selected User Info</div>
-        </div>
-        <div class="user-grid">
-            <div class="user-item">Username: <span id="username">-</span></div>
-            <div class="user-item">Email: <span id="email">-</span></div>
-            <div class="user-item">Password: <span id="password">-</span></div>
-            <div class="user-item">FullName: <span id="fullname">-</span></div>
-            <div class="user-item">DateOfBirth: <span id="dateofbirth">-</span></div>
-            <select name="usertype" id="usertype">
-                <option value="0">Patient</option>
-                <option value="1">Clinician</option>
-                <option value="2">Admin</option>
-            </select>
-            <div class="btn-layout">
-                <div>
-                    <button class="create-btn" id="createBtn">Create</button>
+
+    <div class="main-content-layout">
+
+            <div class="user-list-section">
+                <div class="user-header">
+                    <div class="user-title">User data</div>
                 </div>
-
-                <div>
-                    <button class="edit-btn" id="editBtn">Edit</button>
-                </div>
-
-                <div>
-                    <button class="delete-btn" id="deleteBtn">Delete</button>
+                <div class="user-listbox">
+                     @Html.ListBoxFor(m => m.GetUserItems, null)
                 </div>
             </div>
-        </div>
+
+            <div class="user-info-section">
+                <div class="user-header">
+                    <div class="user-title">Selected User Info</div>
+                </div>
+                <div class="user-grid">
+                    <div class="user-item">Username: <span id="username">-</span></div>
+                    <div class="user-item">Email: <span id="email">-</span></div>
+                    <div class="user-item">Password: <span id="password">-</span></div>
+                    <div class="user-item">FullName: <span id="fullname">-</span></div>
+                    <div class="user-item">DateOfBirth: <span id="dateofbirth">-</span></div>
+                    <select name="usertype" id="usertype">
+                        <option value="0">Patient</option>
+                        <option value="1">Clinician</option>
+                        <option value="2">Admin</option>
+                    </select>
+                    <div class="btn-layout">
+                        <div>
+                            <button class="create-btn" id="createBtn">Create</button>
+                        </div>
+
+                        <div>
+                            <button class="edit-btn" id="editBtn">Edit</button>
+                        </div>
+
+                        <div>
+                            <button class="delete-btn" id="deleteBtn">Delete</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
     </div>
-
-</div>
-
+</form>
