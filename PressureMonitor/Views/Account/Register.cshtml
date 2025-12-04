@@ -4,57 +4,73 @@
     ViewData["Title"] = "Create User";
 }
 
+<style>
+
+    .main-content-layout {
+        display: grid;
+        border: 2px solid #333;
+        gap: 20px;
+        grid-template-columns: 1fr;
+        padding: 20px;
+    }
+
+</style>
+
 <div class="text-center">
-    <h1 class="display-4">Create User (Admin)</h1>
+    <h1>Create/Edit User</h1>
     
-    @if (TempData["Error"] != null)
-    {
-        <div class="alert alert-danger alert-dismissible">
-            @TempData["Error"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    }
+    <div class="main-content-layout">
 
-    @if (TempData["Success"] != null)
-    {
-        <div class="alert alert-success alert-dismissible">
-            @TempData["Success"]
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-        </div>
-    }
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible">
+                @TempData["Error"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
 
-    <form asp-action="HandleRegister" method="post">
-        @Html.AntiForgeryToken()
-        <div class="mb-3">
-            <label asp-for="Username" class="form-label">Username</label>
-            <input asp-for="Username" class="form-control form-control-lg" placeholder="Username:" required />
-            <span asp-validation-for="Username" class="text-danger"></span>
-        </div>
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success alert-dismissible">
+                @TempData["Success"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        <form asp-action="HandleRegister" method="post">
+            @Html.AntiForgeryToken()
+            <div class="mb-3">
+                <label asp-for="Username" class="form-label">Username</label>
+                <input asp-for="Username" class="form-control form-control-lg" placeholder="Username:" required />
+                <span asp-validation-for="Username" class="text-danger"></span>
+            </div>
         
-        <div class="mb-3">
-            <label asp-for="Email" class="form-label">Email</label>
-            <input asp-for="Email" type="email" class="form-control form-control-lg" placeholder="Email:" />
-            <span asp-validation-for="Email" class="text-danger"></span>
-        </div>
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label">Email</label>
+                <input asp-for="Email" type="email" class="form-control form-control-lg" placeholder="Email:" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
         
-        <div class="mb-3">
-            <label asp-for="UserType" class="form-label">User Type</label>
-            <select asp-for="UserType" class="form-select form-select-lg">
-                <option value="@((int)UserType.Patient)">Patient</option>
-                <option value="@((int)UserType.Clinician)">Clinician</option>
-                <option value="@((int)UserType.Admin)">Admin</option>
-            </select>
-            <span asp-validation-for="UserType" class="text-danger"></span>
-        </div>
+            <div class="mb-3">
+                <label asp-for="UserType" class="form-label">User Type</label>
+                <select asp-for="UserType" class="form-select form-select-lg">
+                    <option value="@((int)UserType.Patient)">Patient</option>
+                    <option value="@((int)UserType.Clinician)">Clinician</option>
+                    <option value="@((int)UserType.Admin)">Admin</option>
+                </select>
+                <span asp-validation-for="UserType" class="text-danger"></span>
+            </div>
                         
-        <div class="mb-3">
-            <label asp-for="Password" class="form-label">Password</label>
-            <input asp-for="Password" type="password" class="form-control form-control-lg" placeholder="Password:" required />
-            <span asp-validation-for="Password" class="text-danger"></span>
-        </div>
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label">Password</label>
+                <input asp-for="Password" type="password" class="form-control form-control-lg" placeholder="Password:" required />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
         
-        <div class="d-grid gap-2">
-            <button type="submit" class="btn btn-primary btn-lg">Create User</button>
-        </div>
-    </form>
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">Save User</button>
+            </div>
+        </form>
+
+    </div>
 </div>
