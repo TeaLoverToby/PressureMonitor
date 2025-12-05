@@ -21,7 +21,6 @@
     }
 
     #GetUserItems {
-        color: mediumvioletred;
         height: 450px;
         width: 100%;
     }
@@ -104,17 +103,14 @@
         <div class="dashboard-title-section">
             <div>
                 <h1>Administrator Dashboard</h1>
-                <p>Welcome back, @Model.User.Username!</p>
             </div>
         </div>
     </div>
 </div>
 
 
-<form asp-action="HandleUsers method="post">
-        @Html.AntiForgeryToken()
-
-
+@using (Html.BeginForm("UserSelected", "Admin", FormMethod.Post, new { id = "UserForm" }))
+{
     <div class="main-content-layout">
 
             <div class="user-list-section">
@@ -122,7 +118,7 @@
                     <div class="user-title">User data</div>
                 </div>
                 <div class="user-listbox">
-                     @Html.ListBoxFor(m => m.GetUserItems, null)
+                @Html.DropDownListFor(m => m.SelectedUserItem.Value, Model.GetUserItems, new { size = 20, style = "width:100%;", onchange = "document.getElementById('UserForm').submit();" })
                 </div>
             </div>
 
@@ -131,16 +127,9 @@
                     <div class="user-title">Selected User Info</div>
                 </div>
                 <div class="user-grid">
-                    <div class="user-item">Username: <span id="username">-</span></div>
-                    <div class="user-item">Email: <span id="email">-</span></div>
-                    <div class="user-item">Password: <span id="password">-</span></div>
-                    <div class="user-item">FullName: <span id="fullname">-</span></div>
-                    <div class="user-item">DateOfBirth: <span id="dateofbirth">-</span></div>
-                    <select name="usertype" id="usertype">
-                        <option value="0">Patient</option>
-                        <option value="1">Clinician</option>
-                        <option value="2">Admin</option>
-                    </select>
+                    <div class="user-item">Username: <span id="username">@Model.User.Username</span></div>
+                    <div class="user-item">Email: <span id="email">@Model.User.Email</span></div>
+                    <div class="user-item">User type: <span id="usertype">@Model.User.UserType.ToString()</span></div>
                     <div class="btn-layout">
                         <div>
                             <button class="create-btn" id="createBtn">Create</button>
@@ -157,4 +146,13 @@
                 </div>
             </div>
     </div>
-</form>
+}
+
+<script>
+    function UserboxChanged() {
+        var selectBox = document.getElementById("GetUserItems");
+        var selectedValue = selectBox.options[selectBox.selectedIndex].value;
+        var userDetails = selectedValue.split('|');
+        alert('hi there');
+    }
+</script>
