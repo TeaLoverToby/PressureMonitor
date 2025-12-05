@@ -1,18 +1,26 @@
-﻿using System.Security.Claims;
-using DocumentFormat.OpenXml.Vml.Spreadsheet;
-using Microsoft.AspNetCore.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualBasic;
 using PressureMonitor.Models;
-
+using System.Security.Claims;
 
 namespace PressureMonitor.Controllers;
 
 [Authorize(Roles = "Admin")]
 public class AdminController(ILogger<AdminController> logger, ApplicationDbContext context) : Controller
 {
+    [HttpPost]
+    public async Task<IActionResult> UserSelected(Admin admin)
+    {
+
+        User User = context.Users.FirstOrDefault(u => u.Id.ToString() == admin.SelectedUserItem.Value);
+        admin.AllUsers = context.Users.ToList();
+        admin.User = User;
+
+        return View("index", admin);
+    }
+
     [HttpGet]
     public async Task<IActionResult> Index()
     {
@@ -31,25 +39,8 @@ public class AdminController(ILogger<AdminController> logger, ApplicationDbConte
             return RedirectToAction("Login", "Account");
         }
 
-        List<UserInfo> UserList = admin.GetUsers;
-
-
-
+        admin.AllUsers = context.Users.ToList();
+        admin.SelectedUserItem = new SelectListItem("","0");
         return View(admin);
     }
-
-    //class UserListInfo
-    //{
-    //    public int Id { get; set; }
-    //    public string UserName { get; set; } = string.Empty;
-    }
-
-    //public List<SelectListItem> UserList
-    //{
-    //    get
-    //    {
-    //        List<SelectListItem> users = Admin.
-
-    //    }
-    //}
-
+ }
