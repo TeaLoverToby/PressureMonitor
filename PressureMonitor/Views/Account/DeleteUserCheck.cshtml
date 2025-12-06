@@ -41,7 +41,7 @@
 </style>
 
 <div class="text-center">
-    <h1>Are you sure you want to delete user [insert username here]?</h1>
+    
     
     <div class="main-content-layout">
 
@@ -63,6 +63,10 @@
 
         <form asp-action="HandleDeleteUserCheck" method="post">
             @Html.AntiForgeryToken()
+
+            @Html.HiddenFor(model => model.Id)
+
+            <h1>Are you sure you want to delete user @Model.Username?</h1>
             <div class="btn-layout">
                 <div class="d-grid gap-2">
                     <button type="submit" class="btn btn-delete">Delete</button>

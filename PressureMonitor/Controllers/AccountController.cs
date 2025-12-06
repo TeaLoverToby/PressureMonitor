@@ -268,9 +268,10 @@ public class AccountController(ILogger<AccountController> logger, ApplicationDbC
 
     // Only admins can access the delete user page
     [Authorize(Roles = "Admin")]
-    public IActionResult DeleteUserCheck()
+    public IActionResult DeleteUserCheck(Admin admin)
     {
-        return View();
+        var user = context.Users.FirstOrDefault(u => u.Id.ToString() == admin.SelectedUserItem.Value);
+        return View(user);
     }
 
     [HttpPost]
@@ -284,29 +285,26 @@ public class AccountController(ILogger<AccountController> logger, ApplicationDbC
             return RedirectToAction(nameof(Dashboard));
         }
 
-        // Check if the username / password was entered
-        if (user != null && !string.IsNullOrEmpty(user.Username) && !string.IsNullOrEmpty(user.Password))
+        // Get current user data
+        var DeleteUser = context.Users.FirstOrDefault(u => u.Id == user.Id);
+
+        try
         {
-            try
-            {
+            // Attempt to delete the user (add later)
+            context.Remove(DeleteUser);
+            await context.SaveChangesAsync();
 
-                // Attempt to delete the user (add later)
-                await context.Users.AddAsync(user);
-                await context.SaveChangesAsync();
-
-                TempData["Success"] = $"User '{user.Username}' created.";
-                return RedirectToAction(nameof(Admin));
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(ex, "Error deleting user by admin.");
-                TempData["Error"] = "An error occurred when creating the account.";
-                return RedirectToAction(nameof(DeleteUserCheck));
-            }
+            //TempData["Success"] = $"User '{user.Username}' created.";
+            return RedirectToAction("Index","Admin");
         }
-
-        return RedirectToAction("Index","Admin");
-    }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting user by admin.");
+            TempData["Error"] = "An error occurred when creating the account.";
+            return RedirectToAction("Index", "Admin");
+        }
+     }
+    
 
     [HttpPost]
     [Authorize]
