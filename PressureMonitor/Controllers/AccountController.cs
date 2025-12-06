@@ -305,7 +305,7 @@ public class AccountController(ILogger<AccountController> logger, ApplicationDbC
             }
         }
 
-        return RedirectToAction(nameof(Admin));
+        return RedirectToAction("Index","Admin");
     }
 
     [HttpPost]
