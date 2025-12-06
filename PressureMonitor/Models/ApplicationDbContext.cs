@@ -40,6 +40,13 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey<Admin>(a => a.UserId)
             .OnDelete(DeleteBehavior.Cascade);
         
+        // Clinician -> Patient (one-to-many)
+        modelBuilder.Entity<Clinician>()
+            .HasMany(c => c.Patients)
+            .WithOne(p => p.Clinician)
+            .HasForeignKey(p => p.ClinicianId)
+            .OnDelete(DeleteBehavior.SetNull);
+        
         // Patient -> PressureMap (one-to-many)
         modelBuilder.Entity<Patient>()
             .HasMany(p => p.PressureMaps)
