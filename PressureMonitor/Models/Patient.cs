@@ -16,5 +16,10 @@ public class Patient
     
     public DateTime? DateOfBirth { get; set; }
     
+    public int? ClinicianId { get; set; }
+    
+    [ForeignKey("ClinicianId")]
+    public Clinician? Clinician { get; set; }
+    
     public List<PressureMap> PressureMaps { get; set; } = [];
 }
