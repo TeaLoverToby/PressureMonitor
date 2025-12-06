@@ -1,0 +1,78 @@
+﻿@model User
+
+@{
+    ViewData["Title"] = "Delete user confirmation";
+}
+
+@* this page doesn't work yet lol
+ *@
+
+<style>
+
+    .main-content-layout {
+        display: grid;
+        border: 2px solid #333;
+        gap: 20px;
+        grid-template-columns: 1fr;
+        padding: 20px;
+    }
+
+    .btn-layout {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        margin-top: 20px;
+    }
+
+    .btn-delete, .btn-cancel {
+        background: #cca808;
+        border: 2px solid #333;
+        font-weight: bold;
+        cursor: pointer;
+        width: 100px;
+        height: 40px;
+        font-size: 1.2rem;
+        padding: 0px;
+    }
+
+    .view-details-btn:hover {
+        background: #e7e07b;
+    }
+
+</style>
+
+<div class="text-center">
+    <h1>Are you sure you want to delete user [insert username here]?</h1>
+    
+    <div class="main-content-layout">
+
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible">
+                @TempData["Error"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success alert-dismissible">
+                @TempData["Success"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        <form asp-action="HandleDeleteUserCheck" method="post">
+            @Html.AntiForgeryToken()
+            <div class="btn-layout">
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-delete">Delete</button>
+                </div>
+
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-cancel">Cancel</button>
+                </div>
+            </div>
+        </form>
+
+    </div>
+</div>

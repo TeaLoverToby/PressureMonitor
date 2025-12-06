@@ -1,0 +1,74 @@
+﻿@model User
+
+@{
+    ViewData["Title"] = "Amend User";
+}
+
+<style>
+
+    .main-content-layout {
+        display: grid;
+        border: 2px solid #333;
+        gap: 20px;
+        grid-template-columns: 1fr;
+        padding: 20px;
+    }
+
+</style>
+
+<div class="text-center">
+    
+    
+    <div class="main-content-layout">
+
+        @if (TempData["Error"] != null)
+        {
+            <div class="alert alert-danger alert-dismissible">
+                @TempData["Error"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        @if (TempData["Success"] != null)
+        {
+            <div class="alert alert-success alert-dismissible">
+                @TempData["Success"]
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+
+        <form asp-action="HandleEditUser" method="post">
+            <h1>Amend User "@Model.Username"</h1>
+            @Html.AntiForgeryToken()
+
+            @Html.HiddenFor(model => model.Id)
+        
+            <div class="mb-3">
+                <label asp-for="Email" class="form-label">Email</label>
+                <input asp-for="Email" type="email" class="form-control form-control-lg" placeholder="Email:" />
+                <span asp-validation-for="Email" class="text-danger"></span>
+            </div>
+        
+            <div class="mb-3">
+                <label asp-for="UserType" class="form-label">User Type</label>
+                <select asp-for="UserType" class="form-select form-select-lg">
+                    <option value="@((int)UserType.Patient)">Patient</option>
+                    <option value="@((int)UserType.Clinician)">Clinician</option>
+                    <option value="@((int)UserType.Admin)">Admin</option>
+                </select>
+                <span asp-validation-for="UserType" class="text-danger"></span>
+            </div>
+                        
+            <div class="mb-3">
+                <label asp-for="Password" class="form-label">Password</label>
+                <input asp-for="Password" type="password" class="form-control form-control-lg" placeholder="Password:" />
+                <span asp-validation-for="Password" class="text-danger"></span>
+            </div>
+        
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg">Save User</button>
+            </div>
+        </form>
+
+    </div>
+</div>
