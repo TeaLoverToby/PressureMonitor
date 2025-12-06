@@ -5,6 +5,7 @@
 
 <!-- Decided to move most of the style code into a CSS file to prevent HTML getting messy -->
 <style>
+    /* Main Dashboard Styles */
     .dashboard-header {
         display: flex;
         justify-content: space-between;
@@ -35,6 +36,7 @@
         font-size: 0.9rem;
     }
     
+    /* Day Section Styles */
     .day-selector-section {
         margin-bottom: 20px;
     }
@@ -76,6 +78,7 @@
         background: #e0e0e0;
         border-width: 3px;
     }
+    /* Choose Date Button Styles */
     .calendar-btn {
         padding: 8px 16px;
         border: 2px solid #333;
@@ -105,12 +108,14 @@
         position: relative;
         display: inline-block;
     }
+
     .viewing-label {
         font-size: 1.3rem;
         font-weight: bold;
         color: #333;
     }
     
+    /* Heatmap/Graph Section Styles */
     .heatmap-section, .graph-section {
         border: 2px solid #333;
         padding: 10px;
@@ -144,6 +149,7 @@
     .no-data-message.hidden {
         display: none;
     }
+    /* Loading Overlay Styles */
     .loading-overlay {
         position: absolute;
         top: 0;
@@ -187,7 +193,8 @@
         height: 15px;
         background: linear-gradient(to right, hsl(240, 100%, 50%), hsl(180, 100%, 50%), hsl(120, 100%, 50%), hsl(60, 100%, 50%), hsl(0, 100%, 50%));
     }
-    
+
+    /* Metrics Section Styles */
     .metrics-section {
         border: 2px solid #333;
         padding: 15px;
@@ -621,7 +628,7 @@
                 if (options.from) params.append('from', options.from);
                 if (options.to) params.append('to', options.to);
                 
-                const response = await fetch(`/File/getAveragePressureMap?${params}`);
+                const response = await fetch(`/PressureMap/GetAverage?${params}`);
                 const result = await response.json();
                 
                 // Gets the matrix data of the average map
@@ -700,7 +707,7 @@
 
         // Get the days for which there is a pressure map for the patient
         async function fetchDays() {
-            const res = await fetch('/File/GetMapDays');
+            const res = await fetch('/PressureMap/GetDays');
             if (!res.ok) return [];
             return await res.json();
         }
@@ -717,7 +724,7 @@
                 params.append('to', options.to);
             }
             // Calls the backend method and follows the parameters
-            const res = await fetch(`/File/getPressureGraphData?${params.toString()}`);
+            const res = await fetch(`/PressureMap/GetGraphData?${params.toString()}`);
             if (!res.ok) return null;
             return await res.json();
         }
