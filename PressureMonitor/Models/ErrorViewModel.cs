@@ -7,51 +7,68 @@ public class ErrorViewModel
     public bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
     
 }
-/*
-//This class is logic to show an error to the clincician when the contact area percentage is too low
+
+//Enum is used to represent different alert levels
+//Temporary until the database is updated to include alert levels for errors
+public enum AlertLevel
+{
+    Normal,
+    Warning,
+    Critical
+}
+
+//This class is logic to show an error to the clinician when the contact area percentage is too low
 public class ContactAreaError
 {
-    //Declares private variable to not have any effect on the database
-    private int actualArea;
-    set
+    public int ContactAreaPercentage { get; set; }
+    
+    //Compares the contact area percentage to multiple threshold values to determine the alert level
+    public AlertLevel AlertLevel
     {
-        actualArea = ContactAreaPercentage;
-    }
-    //Compares the contact area percentage to a minimum threshold value
-    if (actualArea < 20)
-    {
-        throw new ArgumentOutOfRangeException(nameof(ContactAreaPercentage), "Contact area percentage is too low, reseat the patient.");
+        get
+        {
+            if (ContactAreaPercentage < 20)
+                return AlertLevel.Critical;
+            if (ContactAreaPercentage < 30)
+                return AlertLevel.Warning;
+            //If the contact area percentage is above the threshold values, return normal
+            return AlertLevel.Normal;
+        }
     }
 }    
 
-//This class is logic to show an error to the clincician when the peak pressure is too high
+//This class is logic to show an error to the clinician when peak pressure is too high
 public class PeakPressureError
 {
-    //Declares private variable to not have any effect on the database
-    private int actualPeakPressure;
-    set
+    public int PeakPressure { get; set; }
+    
+    public AlertLevel AlertLevel
     {
-        actualPeakPressure = PeakPressure;
+        get
+        {
+            if (PeakPressure < 200)
+                return AlertLevel.Critical;
+            if (PeakPressure < 175)
+                return AlertLevel.Warning;
+            return AlertLevel.Normal;
+        }
     }
-    //Compares the peak pressure to a maximum threshold value
-    if (actualPeakPressure > 200)
-    {
-        throw new ArgumentOutOfRangeException(nameof(PeakPressure), "Peak pressure is too high, reseat the patient.");
-    }
-}
+}    
 
-//This class is logic to show an error to the clincician when the minimum pressure is too low
+//This class is logic to show an error to the clinician when minimum pressure is too low
 public class MinimumPressureError
 {
-    //Declares private variable to not have any effect on the database
-    private int actualMinimumPressure;
-    set
+    public int MinValue { get; set; }
+    
+    public AlertLevel AlertLevel
     {
-        actualMinimumPressure = MinValue;
+        get
+        {
+            if (MinValue < 5)
+                return AlertLevel.Critical;
+            if (MinValue < 10)
+                return AlertLevel.Warning;
+            return AlertLevel.Normal;
+        }
     }
-    //Compares the minimum pressure to a minimum threshold value
-    if (actualMinimumPressure > 5)
-    {
-        throw new ArgumentOutOfRangeException(nameof(MinValue), "Minimum pressure is too low, reseat the patient.");
-    }
-}*/
+}    
