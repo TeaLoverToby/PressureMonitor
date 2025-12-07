@@ -165,13 +165,13 @@ public class AccountController(ILogger<AccountController> logger, ApplicationDbC
                 await context.SaveChangesAsync();
 
                 TempData["Success"] = $"User '{user.Username}' created.";
-                return RedirectToAction(nameof(EditUser));
+                return RedirectToAction("Index", "Admin");
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error creating user by admin.");
                 TempData["Error"] = "An error occurred when creating the account.";
-                return RedirectToAction(nameof(Register));
+                return RedirectToAction("Index", "Admin");
             }
         }
 
