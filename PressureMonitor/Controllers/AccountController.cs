@@ -185,6 +185,12 @@ public class AccountController(ILogger<AccountController> logger, ApplicationDbC
     [Authorize(Roles = "Admin")]
     public IActionResult EditUser(Admin admin)        
     {
+        // Check if user has been selected
+        if (admin.SelectedUserItem == null)
+        {
+            return RedirectToAction("Index", "Admin");
+        }
+
         var user = context.Users.FirstOrDefault(u => u.Id.ToString() == admin.SelectedUserItem.Value);
         return View(user);
     }
@@ -200,16 +206,7 @@ public class AccountController(ILogger<AccountController> logger, ApplicationDbC
             return RedirectToAction(nameof(Dashboard));
         }
 
-        //// Check if the username / password was entered
-        //if (user != null && !string.IsNullOrEmpty(user.Username) && !string.IsNullOrEmpty(user.Password))
-        //{
-        //    // We now need to check if the username is already taken
-        //    var existingUser = await context.Users.FirstOrDefaultAsync(u => u.Username == user.Username);
-        //    if (existingUser != null)
-        //    {
-        //        TempData["Error"] = "Username is already taken.";
-        //        return RedirectToAction(nameof(EditUser));
-        //    }
+        
 
         // Get current user data
         var NewUser = context.Users.FirstOrDefault(u => u.Id == user.Id);
@@ -270,6 +267,13 @@ public class AccountController(ILogger<AccountController> logger, ApplicationDbC
     [Authorize(Roles = "Admin")]
     public IActionResult DeleteUserCheck(Admin admin)
     {
+
+        // Check if user has been selected
+        if (admin.SelectedUserItem == null)
+        {
+            return RedirectToAction("Index", "Admin");
+        }
+
         var user = context.Users.FirstOrDefault(u => u.Id.ToString() == admin.SelectedUserItem.Value);
         return View(user);
     }
