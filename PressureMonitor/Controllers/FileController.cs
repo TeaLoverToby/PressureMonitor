@@ -83,22 +83,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             return BadRequest("Invalid day format");
         }
 
-        // Get the patient - if patientId provided (clinician), use that; otherwise find by userId (patient)
-        Patient? patient;
-        if (patientId.HasValue)
-        {
-            patient = await context.Patients
-                .Include(p => p.PressureMaps)
-                .ThenInclude(pm => pm.Frames)
-                .FirstOrDefaultAsync(p => p.Id == patientId.Value);
-        }
-        else
-        {
-            patient = await context.Patients
-                .Include(p => p.PressureMaps)
-                .ThenInclude(pm => pm.Frames)
-                .FirstOrDefaultAsync(p => p.UserId == userId);
-        }
+        var patient = await context.Patients.Include(p => p.PressureMaps).ThenInclude(pm => pm.Frames).FirstOrDefaultAsync(p => patientId.HasValue ? p.Id == patientId.Value : p.UserId == userId);
 
         if (patient == null) return NotFound();
 
