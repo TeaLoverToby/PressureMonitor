@@ -41,7 +41,9 @@ public class ClinicianController(ILogger<ClinicianController> logger, Applicatio
         }
 
         // Check that the clinician exists and get their record
-        var clinician = await context.Clinicians.FirstOrDefaultAsync(c => c.UserId == userId);
+        var clinician = await context.Clinicians
+            .Include(c => c.User)
+            .FirstOrDefaultAsync(c => c.UserId == userId);
         if (clinician == null)
         {
             return RedirectToAction("Login", "Account");
@@ -51,11 +53,11 @@ public class ClinicianController(ILogger<ClinicianController> logger, Applicatio
         var patient = await context.Patients
             .Include(p => p.User)
             .Include(p => p.PressureMaps)
-            .FirstOrDefaultAsync(p => p.Id == patientId && p.ClinicianId == clinician.Id);
+            .FirstOrDefaultAsync(p => p.Id == patientId); // re-add later
 
         if (patient == null)
         {
-            TempData["Error"] = "Patient not found or not assigned to you.";
+            TempData["Error"] = "Patient not found.";
             return RedirectToAction("Index");
         }
 
@@ -78,6 +80,33 @@ public class ClinicianController(ILogger<ClinicianController> logger, Applicatio
         ViewBag.Day = dateOnly;
         ViewBag.PatientId = patientId;
         ViewBag.ClinicianId = clinician.Id;
+        return View();
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> TestSelection()
+    {
+        // Get the logged in clinician's user ID
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        // If not found, just go back to login
+        if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return RedirectToAction("Login", "Account");
+        }
+
+        // Get the clinician record
+        var clinician = await context.Clinicians.Include(c => c.User).FirstOrDefaultAsync(c => c.UserId == userId);
+        if (clinician == null)
+        {
+            return RedirectToAction("Login", "Account");
+        }
+        // Load all the existing patients (for demo version, we load all patients)
+        var patients = await context.Patients
+            .Include(p => p.User)
+            .Include(p => p.PressureMaps)
+            //.Where(p => p.ClinicianId == clinician.Id) // re-add later
+            .ToListAsync();
+        ViewBag.Patients = patients;
         return View();
     }
 }

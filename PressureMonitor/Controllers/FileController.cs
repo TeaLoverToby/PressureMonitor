@@ -14,12 +14,12 @@ using WordDocument = DocumentFormat.OpenXml.Wordprocessing.Document;
 
 namespace PressureMonitor.Controllers;
 
-[Authorize(Roles = "Patient")]
+[Authorize(Roles = "Patient,Clinician")]
 public class FileController(ILogger<FileController> logger, ApplicationDbContext context) : Controller
 {
 
     [HttpGet]
-    public async Task<IActionResult> DownloadCsv(string day)
+    public async Task<IActionResult> DownloadCsv(string day, int? patientId = null)
     {
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userIdStr) || !int.TryParse(userIdStr, out var userId))
@@ -32,11 +32,9 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             return BadRequest("Invalid day format");
         }
 
-        // Get the patient and their pressure maps
-        var patient = await context.Patients
-            .Include(p => p.PressureMaps)
-            .ThenInclude(pm => pm.Frames)
-            .FirstOrDefaultAsync(p => p.UserId == userId);
+        // Get the patient
+        // If the patientId was already provided (clinician) then we use that else find by userId (patient)
+        var patient = await context.Patients.Include(p => p.PressureMaps).ThenInclude(pm => pm.Frames).FirstOrDefaultAsync(p => patientId.HasValue ? p.Id == patientId.Value : p.UserId == userId);
 
         if (patient == null) return NotFound();
 
@@ -71,7 +69,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
     }
 
     [HttpGet]
-    public async Task<IActionResult> DownloadReport(string day, string format)
+    public async Task<IActionResult> DownloadReport(string day, string format, int? patientId = null)
     {
         // Get the user from the cookie
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -85,11 +83,22 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             return BadRequest("Invalid day format");
         }
 
-        // Get the patient with their pressure maps
-        var patient = await context.Patients
-            .Include(p => p.PressureMaps)
-            .ThenInclude(pm => pm.Frames)
-            .FirstOrDefaultAsync(p => p.UserId == userId);
+        // Get the patient - if patientId provided (clinician), use that; otherwise find by userId (patient)
+        Patient? patient;
+        if (patientId.HasValue)
+        {
+            patient = await context.Patients
+                .Include(p => p.PressureMaps)
+                .ThenInclude(pm => pm.Frames)
+                .FirstOrDefaultAsync(p => p.Id == patientId.Value);
+        }
+        else
+        {
+            patient = await context.Patients
+                .Include(p => p.PressureMaps)
+                .ThenInclude(pm => pm.Frames)
+                .FirstOrDefaultAsync(p => p.UserId == userId);
+        }
 
         if (patient == null) return NotFound();
 

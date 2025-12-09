@@ -4,7 +4,7 @@
     var clinician = ViewBag.Clinician;
     var patientId = (int)ViewBag.PatientId;
     var clinicianId = (int)ViewBag.ClinicianId;
-    var patientName = patient?.User?.UserName ?? "Patient";
+    var patientName = patient?.User?.Username ?? "Patient";
     
     ViewData["Title"] = "Patient Pressure Map - " + day.ToString("MM/dd/yyyy");
     var formattedDay = day.ToString("MM/dd/yyyy");
@@ -330,7 +330,7 @@
 
 <div class="container-fluid">
     <!-- Patient Info -->
-    <h4 class="test">Clinician Name: @clinician?.User?.UserName</h4>
+    <h4 class="test">Clinician Name: @clinician?.User?.Username</h4>
     <div class="patient-info">
         <div>
             <h4>Viewing Patient: @patientName</h4>
@@ -404,12 +404,12 @@
               <!-- Action Buttons -->
                 <div class="metrics-section">
                     <div class="action-buttons">
-                        <a asp-controller="File" asp-action="DownloadCsv" asp-route-day="@day.ToString("yyyy-MM-dd")" class="action-btn btn-download">DOWNLOAD</a>
-                        <button class="action-btn btn-flag" id="flagBtn">FLAG</button>
+                        <a asp-controller="File" asp-action="DownloadCsv" asp-route-day="@day.ToString("yyyy-MM-dd")" asp-route-patientId="@patientId" class="action-btn btn-download">DOWNLOAD</a>
                         <!-- This will allow the user to download reports usinbg different method types-->
                         <form asp-controller="File" asp-action="DownloadReport" method="get" class="report-form">
                             <!-- Hidden but used for parsing through to the controller -->
                             <input type="hidden" name="day" value="@day.ToString("yyyy-MM-dd")" />
+                            <input type="hidden" name="patientId" value="@patientId" />
                             <select name="format" class="report-format-select">
                                 <option value="txt">Text (.txt)</option>
                                 <option value="docx">Word (.docx)</option>
@@ -417,7 +417,7 @@
                             </select>
                             <button type="submit" class="action-btn btn-edit report-submit-btn">VIEW REPORT</button>
                         </form>
-                        <a asp-action="Index" class="action-btn btn-delete">BACK</a>
+                        <a asp-action="TestSelection" class="action-btn btn-delete">BACK</a>
                     </div>
                 </div>
             </div>
@@ -468,7 +468,7 @@
         // Fetch the peak data for the given day and time range selected.
         // The data received is JSON and follows format of day, rangeStart, rangeEnd and points[]
         async function fetchPeakData(options = {}) {
-            const params = new URLSearchParams({ day });
+            const params = new URLSearchParams({ day, patientId });
             if (options.hoursBack) {
                 params.append('hoursBack', options.hoursBack);
             }
@@ -706,7 +706,7 @@
             showLoading('heatmapLoading');
             const errorElement = document.getElementById("hidden-canvas-error");
             try {
-                const params = new URLSearchParams({ day });
+                const params = new URLSearchParams({ day, patientId });
                 if (options.hoursBack) params.append('hoursBack', options.hoursBack);
                 if (options.from) params.append('from', options.from);
                 if (options.to) params.append('to', options.to);

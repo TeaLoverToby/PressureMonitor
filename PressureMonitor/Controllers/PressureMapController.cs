@@ -9,7 +9,7 @@ using PressureMonitor.Models;
 
 namespace PressureMonitor.Controllers;
 
-[Authorize(Roles = "Patient")]
+[Authorize(Roles = "Patient,Clinician")]
 public class PressureMapController(ILogger<PressureMapController> logger, ApplicationDbContext context) : Controller
 {
     // Constants
@@ -337,7 +337,8 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         return await context.Patients
             .Include(p => p.PressureMaps)
             .ThenInclude(pm => pm.Frames)
-            .FirstOrDefaultAsync(p => p.Id == patientId && p.ClinicianId == clinician.Id);
+            //.FirstOrDefaultAsync(p => p.Id == patientId && p.ClinicianId == clinician.Id); // Commented out for demo
+            .FirstOrDefaultAsync(p => p.Id == patientId); // Temporary: allow any patient for demo
     }
     
     // Seperated into a method to prevent code duplication
