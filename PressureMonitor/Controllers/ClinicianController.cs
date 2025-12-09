@@ -29,5 +29,85 @@ public class ClinicianController(ILogger<ClinicianController> logger, Applicatio
 
         return View(clinician);
     }
+    
+    [HttpGet]
+    public async Task<IActionResult> ViewPatientPressureMap(int patientId, string day)
+    {
+        // Get the logged in clinician's user ID
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return RedirectToAction("Login", "Account");
+        }
+
+        // Check that the clinician exists and get their record
+        var clinician = await context.Clinicians
+            .Include(c => c.User)
+            .FirstOrDefaultAsync(c => c.UserId == userId);
+        if (clinician == null)
+        {
+            return RedirectToAction("Login", "Account");
+        }
+
+        // Check that this patient is assigned to this clinician
+        var patient = await context.Patients
+            .Include(p => p.User)
+            .Include(p => p.PressureMaps)
+            .FirstOrDefaultAsync(p => p.Id == patientId); // re-add later
+
+        if (patient == null)
+        {
+            TempData["Error"] = "Patient not found.";
+            return RedirectToAction("Index");
+        }
+
+        // This should never be an issue but just in case
+        if (string.IsNullOrWhiteSpace(day) || !DateOnly.TryParse(day, out var dateOnly))
+        {
+            TempData["Error"] = "Invalid date format.";
+            return RedirectToAction("Index");
+        }
+
+        // Check if the patient has any pressure maps for this day (which they should)
+        var hasDataForDay = patient.PressureMaps.Any(pm => pm.Day == dateOnly);
+        if (!hasDataForDay)
+        {
+            TempData["Error"] = "No pressure map data found for this date.";
+            return RedirectToAction("Index");
+        }
+        ViewBag.Clinician = clinician;
+        ViewBag.Patient = patient;
+        ViewBag.Day = dateOnly;
+        ViewBag.PatientId = patientId;
+        ViewBag.ClinicianId = clinician.Id;
+        return View();
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> TestSelection()
+    {
+        // Get the logged in clinician's user ID
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        // If not found, just go back to login
+        if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return RedirectToAction("Login", "Account");
+        }
+
+        // Get the clinician record
+        var clinician = await context.Clinicians.Include(c => c.User).FirstOrDefaultAsync(c => c.UserId == userId);
+        if (clinician == null)
+        {
+            return RedirectToAction("Login", "Account");
+        }
+        // Load all the existing patients (for demo version, we load all patients)
+        var patients = await context.Patients
+            .Include(p => p.User)
+            .Include(p => p.PressureMaps)
+            //.Where(p => p.ClinicianId == clinician.Id) // re-add later
+            .ToListAsync();
+        ViewBag.Patients = patients;
+        return View();
+    }
 }
 

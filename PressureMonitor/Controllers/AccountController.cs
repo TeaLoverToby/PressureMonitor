@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PressureMonitor.Models;
+using System.Security.Claims;
 
 namespace PressureMonitor.Controllers;
 
@@ -164,19 +165,150 @@ public class AccountController(ILogger<AccountController> logger, ApplicationDbC
                 await context.SaveChangesAsync();
 
                 TempData["Success"] = $"User '{user.Username}' created.";
-                return RedirectToAction(nameof(Register));
+                return RedirectToAction("Index", "Admin");
             }
             catch (Exception ex)
             {
                 logger.LogError(ex, "Error creating user by admin.");
                 TempData["Error"] = "An error occurred when creating the account.";
-                return RedirectToAction(nameof(Register));
+                return RedirectToAction("Index", "Admin");
             }
         }
 
         TempData["Error"] = "You entered an invalid username or password.";
         return RedirectToAction(nameof(Register));
     }
+
+
+    // Only admins can access the edit user page
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    public IActionResult EditUser(Admin admin)        
+    {
+        // Check if user has been selected
+        if (admin.SelectedUserItem == null)
+        {
+            return RedirectToAction("Index", "Admin");
+        }
+
+        var user = context.Users.FirstOrDefault(u => u.Id.ToString() == admin.SelectedUserItem.Value);
+        return View(user);
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> HandleEditUser(User? user)
+    {
+        // Only admins can edit users
+        if (!User.IsInRole("Admin"))
+        {
+            return RedirectToAction(nameof(Dashboard));
+        }
+
+        
+
+        // Get current user data
+        var NewUser = context.Users.FirstOrDefault(u => u.Id == user.Id);
+
+        NewUser.Email = user.Email;
+        NewUser.UserType = user.UserType;
+
+        // Hash the password before saving
+        //If a new password is entered update the database, otherwise keep the old password
+        if (user.Password != null && user.Password != "")
+        {
+            var hasher = new PasswordHasher<User>();
+            var hashed = hasher.HashPassword(user, user.Password);
+            NewUser.Password = hashed;
+        }
+
+        switch (user.UserType)
+            {
+                case UserType.Admin:
+                    if (user.Admin != null) break;
+                    var admin = new Admin { User = user };
+                    user.Admin = admin;
+                    break;
+                case UserType.Clinician:
+                    if (user.Clinician != null) break;
+                    var clinician = new Clinician { User = user };
+                    user.Clinician = clinician;
+                    break;
+                case UserType.Patient:
+                    if (user.Patient != null) break;
+                    var patient = new Patient { User = user };
+                    user.Patient = patient;
+                    break;
+            }
+        try
+        { 
+            // Attempt to edit the user (add later)
+            context.Update(NewUser);
+            await context.SaveChangesAsync();
+
+            //TempData["Success"] = $"User '{user.Username}' updated.";
+            return RedirectToAction("Index","Admin");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating user by admin.");
+            TempData["Error"] = "An error occurred when creating the account.";
+            return RedirectToAction("Index", "Admin");
+        }
+    }
+
+        //TempData["Error"] = "You entered an invalid username or password.";
+        //return RedirectToAction(nameof(EditUser));
+    //}
+
+
+    // Only admins can access the delete user page
+    [Authorize(Roles = "Admin")]
+    public IActionResult DeleteUserCheck(Admin admin)
+    {
+
+        // Check if user has been selected
+        if (admin.SelectedUserItem == null)
+        {
+            return RedirectToAction("Index", "Admin");
+        }
+
+        var user = context.Users.FirstOrDefault(u => u.Id.ToString() == admin.SelectedUserItem.Value);
+        return View(user);
+    }
+
+    [HttpPost]
+    [Authorize(Roles = "Admin")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> HandleDeleteUserCheck(User? user)
+    {
+        // Only admins can edit users
+        if (!User.IsInRole("Admin"))
+        {
+            return RedirectToAction(nameof(Dashboard));
+        }
+
+        // Get current user data
+        var DeleteUser = context.Users.FirstOrDefault(u => u.Id == user.Id);
+
+        try
+        {
+            // Attempt to delete the user (add later)
+            context.Remove(DeleteUser);
+            await context.SaveChangesAsync();
+
+            //TempData["Success"] = $"User '{user.Username}' created.";
+            return RedirectToAction("Index","Admin");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting user by admin.");
+            TempData["Error"] = "An error occurred when creating the account.";
+            return RedirectToAction("Index", "Admin");
+        }
+     }
+    
 
     [HttpPost]
     [Authorize]

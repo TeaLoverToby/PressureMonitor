@@ -130,17 +130,18 @@
                     <div class="user-item">Username: <span id="username">@Model.User.Username</span></div>
                     <div class="user-item">Email: <span id="email">@Model.User.Email</span></div>
                     <div class="user-item">User type: <span id="usertype">@Model.User.UserType.ToString()</span></div>
+
                     <div class="btn-layout">
                         <div>
-                            <button class="create-btn" id="createBtn">Create</button>
+                        <button class="create-btn" id="createBtn" asp-area="" asp-controller="Account" asp-action="Register">Create</button>
                         </div>
 
                         <div>
-                            <button class="edit-btn" id="editBtn">Edit</button>
+                        <button class="edit-btn" id="editBtn" type="submit" asp-area="Account" asp-controller="Account" asp-action="EditUser">Amend</button>
                         </div>
 
                         <div>
-                            <button class="delete-btn" id="deleteBtn">Delete</button>
+                        <button class="delete-btn" id="deleteBtn" type="submit" asp-area="Account" asp-controller="Account" asp-action="DeleteUserCheck">Delete</button>
                         </div>
                     </div>
                 </div>
