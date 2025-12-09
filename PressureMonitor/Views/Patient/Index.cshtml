@@ -1,4 +1,4 @@
-﻿@model Patient
+﻿x@model Patient
 @{
     ViewData["Title"] = "Patient Dashboard";
 }
@@ -467,25 +467,12 @@
                 <div class="comments-title">Recent Comments</div>
                 <div class="comments-list" id="commentsList">
                     <!-- Example comment - will be populated dynamically -->
-                    <div class="comment-item">
-                        <div class="comment-author">
-                            <div class="author-icon"></div>
-                            <strong>Example Clinician</strong>
-                        </div>
-                        <div class="comment-row">
-                            <div class="comment-text">Example feedback...</div>
-                            <button class="reply-btn">Reply</button>
-                        </div>
-                        <div class="heatmap-link">
-                            Heatmap: <a href="#">XX/XX/XXXX</a>
-                            <button class="view-heatmap-btn">VIEW</button>
-                        </div>
-                    </div>
+                    
                 </div>
                 
                 <div class="new-comment-section">
                     <label>Comment about current data...</label>
-                    <textarea id="commentInput" placeholder="..."></textarea>
+                    <textarea id="commentBox" placeholder="..."></textarea>
                     <div class="comment-actions">
                         <div class="flag-checkbox">
                             <label>
@@ -493,7 +480,7 @@
                                 Flag for urgent review
                             </label>
                         </div>
-                        <button class="send-btn" id="sendCommentBtn">SEND</button>
+                        <button class="send-btn" id="sendCommentBtn" onclick="sendComment()">SEND</button>
                     </div>
                 </div>
             </div>
@@ -502,6 +489,113 @@
 </div>
 
 @section Scripts {
+    
+    <script>
+    document.addEventListener("DOMContentLoaded", function () {
+        loadComments();
+    });
+    </script>
+    
+    <script>
+    function sendComment() {
+
+    // read comment text
+    const commentText = document.getElementById("commentBox").value;
+
+    // placeholder values for parentId and mapId
+    const mapId = 2; 
+    const parentId = null;
+
+    // send request to save comment
+    fetch("/save-comment", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+
+        // convert into json
+        body: JSON.stringify({
+            MapId: mapId,
+            ParentId: parentId,
+            Text: commentText
+        })
+    })
+
+    // read and log server response
+    .then(res => res.text())
+    .then(text => console.log("Server says:", text))
+
+    // error handling
+    .catch(err => console.error(err))
+
+    // reload comments immediately
+    .then(() => loadComments());
+    }
+    </script>
+    
+    <script>
+    function loadComments() {
+
+    // send request to get recent comments
+    fetch("/get-recent-comments")
+
+        // Convert response into json
+        .then(res => res.json())
+
+        .then(comments => {
+
+            // get the container where comments appear
+            const container = document.getElementById("commentsList");
+
+            // clear comments
+            container.innerHTML = "";
+
+            // default message if no comments exist
+            if (comments.length === 0) {
+                container.innerHTML = "<div class='comment-item'>No comments yet.</div>";
+                return; // Stop here so we don't try to loop
+            }
+
+            // iterate through comments
+            comments.forEach(c => {
+
+                // create a new element for the comment
+                const item = document.createElement("div");
+
+                // apply styling
+                item.className = "comment-item";
+
+                // get readable date and time
+                const date = new Date(c.createdAt || c.CreatedAt).toLocaleString();
+
+                // insert comment data
+                item.innerHTML = `
+                    <div class="comment-author">
+                        <div class="author-icon"></div>
+                        <strong>User #${c.userId}</strong>
+                    </div>
+
+                    <div class="comment-row">
+                        <div class="comment-text">${c.text}</div>
+                        <button class="reply-btn">Reply</button>
+                    </div>
+
+                    <div class="heatmap-link">
+                        Posted: <a href="#">${date}</a>
+                        <button class="view-heatmap-btn">VIEW</button>
+                    </div>
+                `;
+
+                // add comment into page
+                container.appendChild(item);
+            });
+        })
+
+        // error handling
+        .catch(err => console.error("Error loading comments:", err));
+    }
+    </script>
+        
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // Heatmap script
