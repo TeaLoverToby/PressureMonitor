@@ -52,12 +52,11 @@ public class PatientController(ILogger<PatientController> logger, ApplicationDbC
                 command.CommandText =
                     @"
                         INSERT INTO Comments 
-                        (UserId, MapId, ParentId, Text, CreatedAt)
+                        (UserId, ParentId, Text, CreatedAt)
                         VALUES 
-                        ($userId, $mapId, $parentId, $text, $createdAt)
+                        ($userId, $parentId, $text, $createdAt)
                     ";
                 command.Parameters.AddWithValue("$userId", userId);
-                command.Parameters.AddWithValue("$mapId", comment.MapId);
 
                 if (comment.ParentId == null)
                     command.Parameters.AddWithValue("$parentId", DBNull.Value);
@@ -78,63 +77,54 @@ public class PatientController(ILogger<PatientController> logger, ApplicationDbC
         }
     } 
     
-    [HttpGet]
-
-    [Route("get-recent-comments")]
-    public IActionResult GetRecentComments()
+    [HttpGet("/get-comments-by-day")]
+    public IActionResult GetCommentsByDay(string day)
     {
-        // list to hold our comments
-        var comments = new List<Comment>();
+        if (string.IsNullOrWhiteSpace(day))
+            return BadRequest("Missing day");
+
+        // Parse the day into a DateTime
+        if (!DateTime.TryParse(day, out var targetDate))
+            return BadRequest("Invalid date format");
+
+        var comments = new List<object>(); // anonymous objects to include username
 
         try
         {
-            // connect to database
             using (var connection = new SqliteConnection("Data Source=PressureMonitor.db"))
             {
                 connection.Open();
 
-                // create an SQL query to get the 10 most recent comments
                 var command = connection.CreateCommand();
-
-                command.CommandText =
-                    @"
-                SELECT Id, UserId, MapId, ParentId, Text, CreatedAt
-                FROM Comments
-                ORDER BY CreatedAt DESC
-                LIMIT 10
+                command.CommandText = @"
+                SELECT c.Id, c.UserId, u.Username AS UserName, c.ParentId, c.Text, c.CreatedAt
+                FROM Comments c
+                JOIN Users u ON u.Id = c.UserId
+                WHERE date(c.CreatedAt) = date($day)
+                ORDER BY c.CreatedAt DESC
             ";
 
-                // execute the query and read the results
+                command.Parameters.AddWithValue("$day", targetDate.ToString("yyyy-MM-dd"));
+
                 using (var reader = command.ExecuteReader())
                 {
-                    // Loop through every row returned by the database
                     while (reader.Read())
                     {
-                        // convert database row into c# object
-                        comments.Add(new Comment
+                        comments.Add(new
                         {
-                            Id = reader.GetInt32(0),
-
-                            UserId = reader.GetInt32(1),
-
-                            MapId = reader.GetInt32(2),
-
-                            // set parentId to null if null in database
-                            ParentId = reader.IsDBNull(3) ? null : reader.GetInt32(3),
-
-                            Text = reader.GetString(4),
-
-                            //convert createdAt string to dateTime
-                            CreatedAt = DateTime.Parse(reader.GetString(5))
+                            id = reader.GetInt32(0),
+                            userId = reader.GetInt32(1),
+                            userName = reader.GetString(2),
+                            parentId = reader.IsDBNull(3) ? (int?)null : reader.GetInt32(3),
+                            text = reader.GetString(4),
+                            createdAt = reader.GetString(5)
                         });
                     }
                 }
             }
 
-
             return Ok(comments);
         }
-        //error handling
         catch (Exception ex)
         {
             return BadRequest("DB ERROR: " + ex.Message);

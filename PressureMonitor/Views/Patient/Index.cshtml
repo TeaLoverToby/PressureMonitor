@@ -1,4 +1,4 @@
-﻿x@model Patient
+﻿@model Patient
 @{
     ViewData["Title"] = "Patient Dashboard";
 }
@@ -476,7 +476,9 @@
                     <!-- Example comment - will be populated dynamically -->
                     
                 </div>
-                
+                <label for="commentDay"><strong>View comments for:</strong></label>
+                <input type="date" id="commentDay" />
+                <button onclick="loadComments()">Load</button>
                 <div class="new-comment-section">
                     <label>Comment about current data...</label>
                     <textarea id="commentBox" placeholder="..."></textarea>
@@ -494,6 +496,10 @@
         </div>
     </div>
 </div>
+<div id="replyTemplate" style="display:none;">
+    <textarea class="replyBox" placeholder="Write a reply..."></textarea>
+    <button class="sendReplyBtn">Send Reply</button>
+</div>
 
 @section Scripts {
     
@@ -501,106 +507,225 @@
     document.addEventListener("DOMContentLoaded", function () {
         loadComments();
     });
+    
+    document.addEventListener("DOMContentLoaded", () => {
+        const picker = document.getElementById("commentDay");
+        if (picker) picker.valueAsDate = new Date();
+        loadComments();
+    });
     </script>
     
     <script>
-    function sendComment() {
-
-    // read comment text
-    const commentText = document.getElementById("commentBox").value;
-
-    // placeholder values for parentId and mapId
-    const mapId = 2; 
-    const parentId = null;
-
-    // send request to save comment
-    fetch("/save-comment", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-
-        // convert into json
-        body: JSON.stringify({
-            MapId: mapId,
-            ParentId: parentId,
-            Text: commentText
-        })
-    })
-
-    // read and log server response
-    .then(res => res.text())
-    .then(text => console.log("Server says:", text))
-
-    // error handling
-    .catch(err => console.error(err))
-
-    // reload comments immediately
-    .then(() => loadComments());
+    // Helper: get the date from the picker, or return today's date (yyyy-mm-dd)
+    function getSelectedDayOrToday() {
+        const picker = document.getElementById("commentDay");
+        if (!picker) {
+            // If the element is missing, fallback to today
+            const today = new Date();
+            return today.toISOString().split('T')[0];
+        }
+        // If user hasn't picked a date, picker.value may be empty string
+        return picker.value || new Date().toISOString().split('T')[0];
     }
-    </script>
     
-    <script>
+    // Load comments for the selected day
     function loadComments() {
+        // Ensure 'day' is defined here
+        const day = getSelectedDayOrToday();
+    
+        // Optional: confirm we actually have a day string in the right format
+        if (!day) {
+            console.warn("No day available to load comments.");
+            return;
+        }
+    
+        // Build URL safely (encode the param)
+        const url = "/get-comments-by-day?day=" + encodeURIComponent(day);
+    
+        fetch(url)
+            .then(res => {
+                if (!res.ok) throw new Error("Server returned " + res.status);
+                return res.json();
+            })
+            .then(comments => {
+                const container = document.getElementById("commentsList");
+                if (!container) {
+                    console.error("No element with id 'commentsList' found.");
+                    return;
+                }
+    
+                container.innerHTML = "";
+    
+                if (!comments || comments.length === 0) {
+                    container.innerHTML = "<div class='comment-item'>No comments for this day.</div>";
+                    return;
+                }
 
-    // send request to get recent comments
-    fetch("/get-recent-comments")
+                const childrenByParent = {};
+                comments.forEach(c => {
+                    const parent = c.parentId ?? 0;
+                    if (!childrenByParent[parent]) childrenByParent[parent] = [];
+                    childrenByParent[parent].push(c);
+                });
 
-        // Convert response into json
-        .then(res => res.json())
+                // Recursive render function
+                function renderThread(parentId, level) {
+                    const children = childrenByParent[parentId] || [];
 
-        .then(comments => {
+                    children.forEach(c => {
+                        const item = document.createElement("div");
+                        item.className = "comment-item";
 
-            // get the container where comments appear
-            const container = document.getElementById("commentsList");
+                        // Indentation via padding-left
+                        item.style.marginLeft = (level * 20) + "px";
 
-            // clear comments
-            container.innerHTML = "";
+                        const date = new Date(c.createdAt).toLocaleString();
 
-            // default message if no comments exist
-            if (comments.length === 0) {
-                container.innerHTML = "<div class='comment-item'>No comments yet.</div>";
-                return; // Stop here so we don't try to loop
-            }
+                        item.innerHTML = `
+                            <div class="comment-author">
+                                <div class="author-icon"></div>
+                                <strong>User #${c.userId}</strong>
+                            </div>
+                
+                            <div class="comment-row">
+                                <div class="comment-text">${escapeHtml(c.text)}</div>
+                                <button class="reply-btn" data-comment-id="${c.id}">Reply</button>
+                            </div>
+                
+                            <div class="heatmap-link">
+                                Posted: <a href="#">${date}</a>
+                                <button class="view-heatmap-btn">VIEW</button>
+                            </div>
+                        `;
 
-            // iterate through comments
-            comments.forEach(c => {
+                        container.appendChild(item);
 
-                // create a new element for the comment
-                const item = document.createElement("div");
-
-                // apply styling
-                item.className = "comment-item";
-
-                // get readable date and time
-                const date = new Date(c.createdAt || c.CreatedAt).toLocaleString();
-
-                // insert comment data
-                item.innerHTML = `
-                    <div class="comment-author">
-                        <div class="author-icon"></div>
-                        <strong>User #${c.userId}</strong>
-                    </div>
-
-                    <div class="comment-row">
-                        <div class="comment-text">${c.text}</div>
-                        <button class="reply-btn">Reply</button>
-                    </div>
-
-                    <div class="heatmap-link">
-                        Posted: <a href="#">${date}</a>
-                        <button class="view-heatmap-btn">VIEW</button>
-                    </div>
-                `;
-
-                // add comment into page
-                container.appendChild(item);
-            });
-        })
-
-        // error handling
-        .catch(err => console.error("Error loading comments:", err));
+                        // Recursively render replies
+                        renderThread(c.id, level + 1);
+                    });
+                }
+                
+                renderThread(0, 0);
+                attachReplyHandlers();
+            })
+            .catch(err => console.error("Error loading comments:", err));
     }
+
+    function attachReplyHandlers() {
+        document.querySelectorAll(".reply-btn").forEach(btn => {
+            btn.addEventListener("click", () => {
+                const commentId = btn.getAttribute("data-comment-id");
+
+                // Remove existing reply boxes
+                document.querySelectorAll(".replyBoxContainer").forEach(e => e.remove());
+
+                // Create container
+                const container = document.createElement("div");
+                container.className = "replyBoxContainer";
+
+                // Clone template
+                const template = document.getElementById("replyTemplate").cloneNode(true);
+                template.style.display = "block";
+
+                // Add to DOM under the comment row
+                btn.parentElement.after(container);
+                container.appendChild(template);
+
+                // Add send button event
+                const sendReplyBtn = template.querySelector(".sendReplyBtn");
+                const replyBox = template.querySelector(".replyBox");
+
+                sendReplyBtn.addEventListener("click", () => {
+                    sendReply(commentId, replyBox.value);
+                });
+            });
+        });
+    }
+
+    function sendReply(parentId, text) {
+        const day = getSelectedDayOrToday();
+
+        fetch("/save-comment", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                ParentId: parseInt(parentId),
+                Text: text
+            })
+        })
+            .then(res => res.text())
+            .then(msg => {
+                console.log("Reply saved:", msg);
+
+                // reload comment list for selected day
+                loadComments();
+            })
+            .catch(err => console.error("Error saving reply:", err));
+    }
+    
+    // Simple HTML escape to avoid inserting raw HTML from DB
+    function escapeHtml(unsafe) {
+        if (!unsafe && unsafe !== "") return "";
+        return unsafe
+            .toString()
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+    
+    // sendComment reads the comment box and posts it, then reloads comments for selected day
+    function sendComment() {
+        const commentText = document.getElementById("commentBox")?.value || "";
+        const parentId = null;
+        const day = getSelectedDayOrToday();
+    
+        // If your backend expects CreatedAt automatically, we don't send 'day' on POST.
+        // We just post the comment and refresh comments for the selected day afterwards.
+        fetch("/save-comment", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                // Do NOT include a UserId here if your backend sets it from the logged-in user
+                // UserId: userId, // removed intentionally
+                ParentId: parentId,
+                Text: commentText
+            })
+        })
+            .then(res => {
+                if (!res.ok) return res.text().then(t => { throw new Error(t || res.status); });
+                return res.text();
+            })
+            .then(text => {
+                console.log("Server says:", text);
+                // reload comments for the chosen day
+                loadComments();
+                // clear the input
+                const box = document.getElementById("commentBox");
+                if (box) box.value = "";
+            })
+            .catch(err => console.error("Error saving comment:", err));
+    }
+    
+    // Wire up event listeners once DOM is ready
+    document.addEventListener("DOMContentLoaded", function () {
+        // default the picker to today
+        const picker = document.getElementById("commentDay");
+        if (picker && !picker.value) picker.valueAsDate = new Date();
+    
+        // load immediately
+        loadComments();
+    
+        // attach button
+        const loadBtn = document.getElementById("loadCommentsBtn");
+        if (loadBtn) loadBtn.addEventListener("click", loadComments);
+    
+        // attach your send button if present
+        const sendBtn = document.getElementById("sendCommentBtn");
+    });
     </script>
         
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
