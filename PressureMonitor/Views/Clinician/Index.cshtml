@@ -73,48 +73,52 @@
 
 </style>
 
-<div class="text-center">
-    <div class="container-fluid">
-        <div class="dashboard-header">
-            <div class="dashboard-title-section">
-                <div>
-                    <h1>Clinician Dashboard</h1>
-                    <p>Welcome back, @Model.User.Username!</p>
+@using (Html.BeginForm("UserSelected", "Clinician", FormMethod.Post, new { id = "UserForm" }))
+{
+    <div class="text-center">
+        <div class="container-fluid">
+            <div class="dashboard-header">
+                <div class="dashboard-title-section">
+                    <div>
+                        <h1>Clinician Dashboard</h1>
+                        <p>Welcome back, @Model.User.Username!</p>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="main-content-layout">
-
-        <div class="patient-list-section">
-            <div class="user-header">
-                <div class="user-title">Patient Overview</div>
+        
+        <div class="main-content-layout">
+            @Html.HiddenFor(m => m.Id)
+            <div class="patient-list-section">
+                <div class="user-header">
+                    <div class="user-title">Patient Selection</div>
+                </div>
+                <div class="user-grid">
+                    <div class="user-listbox">
+                        @Html.DropDownListFor(m => m.SelectedUserItem.Value, Model.GetUserItems, new { size = 20, style = "width:100%;", onchange = "document.getElementById('UserForm').submit();" })
+                    </div>
+                </div>
             </div>
-            <div class="user-grid">
 
+            <div class="patient-info-section">
+                <div class="user-header">
+                    <div class="user-title">Selected Patient Data</div>
+                </div>
+                <div class="user-grid">
+                </div>
+            </div>
+
+
+            <div class="clinician-comment-section">
+                <div class="user-header">
+                    <div class="user-title">Comments</div>
+                </div>
+                <div class="user-grid">
+                    @*
+                        clinician comments to be added here (WILLOW THIS IS YOUR BIT)
+                    *@
+                </div>
             </div>
         </div>
-
-        <div class="patient-info-section">
-            <div class="user-header">
-                <div class="user-title">Selected Patient Data</div>
-            </div>
-            <div class="user-grid">
-                
-            </div>
-        </div>
-
-        <div class="clinician-comment-section">
-            <div class="user-header">
-                <div class="user-title">Comments</div>
-            </div>
-            <div class="user-grid">
-                @*
-                    clinician comments to be added here (WILLOW THIS IS YOUR BIT)
-                *@
-            </div>
-        </div>
-
-    </div>
 </div>
+}

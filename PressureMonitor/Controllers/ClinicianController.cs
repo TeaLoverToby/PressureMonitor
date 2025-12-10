@@ -1,8 +1,10 @@
-﻿using System.Security.Claims;
+﻿using DocumentFormat.OpenXml.Spreadsheet;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using PressureMonitor.Models;
+using System.Security.Claims;
 
 namespace PressureMonitor.Controllers;
 
@@ -27,9 +29,41 @@ public class ClinicianController(ILogger<ClinicianController> logger, Applicatio
             return RedirectToAction("Login", "Account");
         }
 
+        clinician.AllUsers = context.Users.ToList();
+        clinician.AllPatientUsers = clinician.AllUsers.Where(u => u.UserType == 0).ToList();
+        clinician.SelectedUserItem = new SelectListItem("", "0");
+
+
+
         return View(clinician);
     }
-    
+
+    [HttpPost]
+    public async Task<IActionResult> UserSelected(Clinician clinician)
+    {
+        Clinician c = context.Clinicians
+            .Include(c => c.User)
+            .FirstOrDefault(c => c.Id == clinician.Id);
+
+        clinician.Id = c.Id;
+        clinician.UserId = c.UserId;
+        clinician.User = c.User;
+        clinician.LicenseNumber = c.LicenseNumber;
+
+        Patient patient = context.Patients.FirstOrDefault(p => p.UserId.ToString() == clinician.SelectedUserItem.Value);
+        c.Patients.Clear();
+        c.Patients.Add(patient);
+
+        //clinician.Patients = context.Users.ToList();
+        //clinician.User = User;
+
+        clinician.AllUsers = context.Users.ToList();
+        clinician.AllPatientUsers = clinician.AllUsers.Where(u => u.UserType == 0).ToList();
+        clinician.SelectedUserItem = new SelectListItem("", "0");
+
+        return View("index", clinician);
+    }
+
     [HttpGet]
     public async Task<IActionResult> ViewPatientPressureMap(int patientId, string day)
     {
