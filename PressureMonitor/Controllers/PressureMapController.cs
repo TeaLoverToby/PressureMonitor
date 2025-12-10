@@ -286,7 +286,6 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
 
         // Find the pressure map and check that it belongs to the patient (incase it was already deleted)
         var map = await context.PressureMaps
-            .Include(pm => pm.Frames)
             .FirstOrDefaultAsync(pm => pm.Id == id && pm.PatientId == patient.Id);
 
         if (map == null)
@@ -296,9 +295,10 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         }
 
         var day = map.Day;
-        var frameCount = map.Frames.Count;
+        // Get the number of frames without loading them all
+        var frameCount = await context.PressureFrames.CountAsync(f => f.PressureMapId == id);
 
-        // Delete the pressure map
+        // Delete the pressure map, casading will delete the frames automatically
         context.PressureMaps.Remove(map);
         await context.SaveChangesAsync();
 
@@ -395,15 +395,27 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             .OrderBy(f => f.Timestamp)
             .ToList();
 
-        // SO, the frames are grouped by minute, and for each minute we take the highest pressure between all frames in that minute
-        // This gives a list of points with t (time) and v (value)
-        // The time is then formatted with ISO format ("o")
+        // So, the frames are grouped into buckets of time (e.g 5 seconds) to reduce the number of points shown on the graph
+        // This will return a list of points with t (time) and v (value)
+        // This is done to smooth out the graph and make it more readable
+        const int groupSeconds = 3;
         var framePoints = filteredFrames
-            .GroupBy(f => new DateTime(f.Timestamp.Year, f.Timestamp.Month, f.Timestamp.Day, f.Timestamp.Hour, f.Timestamp.Minute, 0))
-            .Select(g => new { t = g.Key.ToString("o"), v = g.Max(f => f.PeakPressure) })
-            .ToList();
+            .GroupBy(f => {
+                // Get the total seconds since the range start
+                var totalSeconds = (int)(f.Timestamp - rangeStart).TotalSeconds;
+                // Gets the start time of the bucket (nearest 3-second interval)
+                // Example: if groupSeconds is 5, and totalSeconds is 12, then the bucket start is 10
+                var bucketStart = rangeStart.AddSeconds(totalSeconds / groupSeconds * groupSeconds);
+                return bucketStart;
+            })
+            .Select(g => new { 
+                t = g.Key.ToString("o"), 
+                // We take the average of the peak pressures in this group
+                v = (int)Math.Round(g.Average(f => f.PeakPressure)) 
+            })
+            .ToList(); // All the points are now collected into framePoints
 
-        // This can be converted to JSON later sp gra[h can parse it]
+        // This can be converted to JSON later so the graph can parse it
         return new {
             day = dateOnly.ToString("yyyy-MM-dd"),
             rangeStart = rangeStart.ToString("o"),
