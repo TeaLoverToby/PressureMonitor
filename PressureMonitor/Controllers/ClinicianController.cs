@@ -41,7 +41,7 @@ public class ClinicianController(ILogger<ClinicianController> logger, Applicatio
     [HttpPost]
     public async Task<IActionResult> UserSelected(Clinician clinician)
     {
-        Clinician c = context.Clinicians
+        Clinician? c = context.Clinicians
             .Include(c => c.User)
             .FirstOrDefault(c => c.Id == clinician.Id);
 
@@ -50,9 +50,19 @@ public class ClinicianController(ILogger<ClinicianController> logger, Applicatio
         clinician.User = c.User;
         clinician.LicenseNumber = c.LicenseNumber;
 
-        Patient patient = context.Patients.FirstOrDefault(p => p.UserId.ToString() == clinician.SelectedUserItem.Value);
+        var patient = context.Patients
+            .Include(p => p.User)
+            .Include(p => p.PressureMaps)
+            .FirstOrDefault(p => p.UserId.ToString() == clinician.SelectedUserItem.Value);
+
         clinician.Patients.Clear();
         clinician.Patients.Add(patient);
+
+        var patients = await context.Patients
+    .Include(p => p.User)
+    .Include(p => p.PressureMaps)
+    //.Where(p => p.ClinicianId == clinician.Id) // re-add later
+    .ToListAsync();
 
         //clinician.Patients = context.Users.ToList();
         //clinician.User = User;
