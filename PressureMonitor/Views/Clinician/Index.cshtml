@@ -1,6 +1,7 @@
 ﻿@model Clinician
 
 @{
+    var patients = Model.Patients as List<PressureMonitor.Models.Patient>;
     ViewData["Title"] = "Clinician Dashboard";
 }
 
@@ -104,8 +105,39 @@
                 <div class="user-header">
                     <div class="user-title">Selected Patient Data</div>
                 </div>
-                <div class="user-grid">
-                </div>
+                    <div class="user-grid">
+                    @if (patients == null || !patients.Any())
+                    {
+                        <div class="alert alert-warning">No patients found.</div>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var patient in patients)
+                            {
+                                <div class="list-group-item">
+                                    <h5 class="mb-1">@patient.User.Username (ID: @patient.Id)</h5>
+                                    @if (patient.PressureMaps.Any())
+                                    {
+                                        <div class="d-flex flex-wrap gap-2 mt-2">
+                                            @foreach (var map in patient.PressureMaps.OrderByDescending(pm => pm.Day).DistinctBy(pm => pm.Day))
+                                            {
+                                                <a asp-action="ViewPatientPressureMap" asp-route-patientId="@patient.Id" asp-route-day="@map.Day.ToString("yyyy-MM-dd")"
+                                                   class="btn btn-outline-primary btn-sm">
+                                                    View @map.Day.ToString("MM/dd/yyyy")
+                                                </a>
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted mb-0">No pressure maps available.</p>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    </div>
             </div>
 
 

@@ -51,8 +51,8 @@ public class ClinicianController(ILogger<ClinicianController> logger, Applicatio
         clinician.LicenseNumber = c.LicenseNumber;
 
         Patient patient = context.Patients.FirstOrDefault(p => p.UserId.ToString() == clinician.SelectedUserItem.Value);
-        c.Patients.Clear();
-        c.Patients.Add(patient);
+        clinician.Patients.Clear();
+        clinician.Patients.Add(patient);
 
         //clinician.Patients = context.Users.ToList();
         //clinician.User = User;

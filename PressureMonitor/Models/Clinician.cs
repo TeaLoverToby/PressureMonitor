@@ -17,7 +17,8 @@ public class Clinician
 
     [StringLength(100)]
     public string? LicenseNumber { get; set; }
-    
+
+    [NotMapped]
     public List<Patient> Patients { get; set; } = [];
 
     [NotMapped]
