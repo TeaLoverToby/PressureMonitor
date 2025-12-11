@@ -98,6 +98,7 @@
 
 </style>
 
+@* Dashboard header *@
 <div class="container-fluid">
     <div class="dashboard-header">
         <div class="dashboard-title-section">
@@ -115,7 +116,7 @@
 
             <div class="user-list-section">
                 <div class="user-header">
-                    <div class="user-title">User data</div>
+                    <div class="user-title">User Selection</div>
                 </div>
                 <div class="user-listbox">
                 @Html.DropDownListFor(m => m.SelectedUserItem.Value, Model.GetUserItems, new { size = 20, style = "width:100%;", onchange = "document.getElementById('UserForm').submit();" })
@@ -148,12 +149,3 @@
             </div>
     </div>
 }
-
-<script>
-    function UserboxChanged() {
-        var selectBox = document.getElementById("GetUserItems");
-        var selectedValue = selectBox.options[selectBox.selectedIndex].value;
-        var userDetails = selectedValue.split('|');
-        alert('hi there');
-    }
-</script>

@@ -81,6 +81,7 @@
             <div class="dashboard-header">
                 <div class="dashboard-title-section">
                     <div>
+                        @* pulls the username to greet the user *@
                         <h1>Clinician Dashboard</h1>
                         <p>Welcome back, @Model.User.Username!</p>
                     </div>
@@ -96,6 +97,7 @@
                 </div>
                 <div class="user-grid">
                     <div class="user-listbox">
+                        @* creates a list box containing every user with the type "patient" contained in the database *@
                         @Html.DropDownListFor(m => m.SelectedUserItem.Value, Model.GetUserItems, new { size = 20, style = "width:100%;", onchange = "document.getElementById('UserForm').submit();" })
                     </div>
                 </div>
@@ -107,10 +109,13 @@
                 </div>
                     <div class="user-grid">
                     @if (patients == null || !patients.Any())
+                    @* if no patient is selected, show this message in the info section *@
                     {
-                        <div class="alert alert-warning">No patients found.</div>
+                        <div class="alert alert-warning">No patient selected.</div>
                     }
                     else
+                    @* grabs any pressure maps linked to the selected patient
+                    shows a link to a view page for each one, listed by date *@
                     {
                         <div class="list-group">
                             @foreach (var patient in patients)
@@ -140,15 +145,12 @@
                     </div>
             </div>
 
-
             <div class="clinician-comment-section">
                 <div class="user-header">
                     <div class="user-title">Comments</div>
                 </div>
                 <div class="user-grid">
-                    @*
-                        clinician comments to be added here (WILLOW THIS IS YOUR BIT)
-                    *@
+                                       
                 </div>
             </div>
         </div>

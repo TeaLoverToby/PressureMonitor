@@ -8,6 +8,7 @@ using System.Security.Claims;
 
 namespace PressureMonitor.Controllers;
 
+//check that user is logged in and is a clinician
 [Authorize(Roles = "Clinician")]
 public class ClinicianController(ILogger<ClinicianController> logger, ApplicationDbContext context) : Controller
 {
@@ -38,6 +39,7 @@ public class ClinicianController(ILogger<ClinicianController> logger, Applicatio
         return View(clinician);
     }
 
+    //process selected user from dropdown
     [HttpPost]
     public async Task<IActionResult> UserSelected(Clinician clinician)
     {
@@ -61,12 +63,8 @@ public class ClinicianController(ILogger<ClinicianController> logger, Applicatio
         var patients = await context.Patients
     .Include(p => p.User)
     .Include(p => p.PressureMaps)
-    //.Where(p => p.ClinicianId == clinician.Id) // re-add later
     .ToListAsync();
-
-        //clinician.Patients = context.Users.ToList();
-        //clinician.User = User;
-
+               
         clinician.AllUsers = context.Users.ToList();
         clinician.AllPatientUsers = clinician.AllUsers.Where(u => u.UserType == 0).ToList();
         clinician.SelectedUserItem = new SelectListItem("", "0");
@@ -74,6 +72,7 @@ public class ClinicianController(ILogger<ClinicianController> logger, Applicatio
         return View("index", clinician);
     }
 
+    // view a specific patient's pressure map for a given day
     [HttpGet]
     public async Task<IActionResult> ViewPatientPressureMap(int patientId, string day)
     {
@@ -97,7 +96,7 @@ public class ClinicianController(ILogger<ClinicianController> logger, Applicatio
         var patient = await context.Patients
             .Include(p => p.User)
             .Include(p => p.PressureMaps)
-            .FirstOrDefaultAsync(p => p.Id == patientId); // re-add later
+            .FirstOrDefaultAsync(p => p.Id == patientId);
 
         if (patient == null)
         {
@@ -144,11 +143,10 @@ public class ClinicianController(ILogger<ClinicianController> logger, Applicatio
         {
             return RedirectToAction("Login", "Account");
         }
-        // Load all the existing patients (for demo version, we load all patients)
+        // Load all the existing patients
         var patients = await context.Patients
             .Include(p => p.User)
             .Include(p => p.PressureMaps)
-            //.Where(p => p.ClinicianId == clinician.Id) // re-add later
             .ToListAsync();
         ViewBag.Patients = patients;
         return View();
