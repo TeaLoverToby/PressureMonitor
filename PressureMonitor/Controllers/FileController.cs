@@ -316,6 +316,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
     // Generates the report in PDF format using QuestPDF
     private IActionResult GeneratePdfReport(ReportData data, List<(int r, int c, double avg)> topRegions, DateOnly dateOnly)
     {   
+        QuestPDF.Settings.License = LicenseType.Community;
         var document = QuestPDF.Fluent.Document.Create(container =>
         {
             container.Page(page =>
