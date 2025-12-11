@@ -112,16 +112,16 @@ public class AccountController(ILogger<AccountController> logger, ApplicationDbC
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> HandleRegister(User? user)
     {
-        // Only admins can create users
+        // only admins can create users
         if (!User.IsInRole("Admin"))
         {
             return RedirectToAction(nameof(Dashboard));
         }
 
-        // Check if the username / password was entered
+        // check if the username / password was entered
         if (user != null && !string.IsNullOrEmpty(user.Username) && !string.IsNullOrEmpty(user.Password))
         {
-            // We now need to check if the username is already taken
+            // check if the username is already taken
             var existingUser = await context.Users.FirstOrDefaultAsync(u => u.Username == user.Username);
             if (existingUser != null)
             {
@@ -131,16 +131,11 @@ public class AccountController(ILogger<AccountController> logger, ApplicationDbC
 
             try
             {
-                // Hash the password before saving
+                // hash the password before saving
                 var hasher = new PasswordHasher<User>();
                 var hashed = hasher.HashPassword(user, user.Password);
                 user.Password = hashed;
-
-                // REMOVE THIS EXPLANATION WHEN PROJECT IS DONE
-                // To explain this, the UserType enum controls what type of user it is.
-                // Each user type has a corresponding entity (Admin, Clinician, Patient).
-                // We need to create the corresponding entity - think of it like a foreign key.
-                // If we don't create this entity, then it will be null and when the user opens their dashboard, it will have a smelly error.
+                                
                 switch (user.UserType)
                 {
                     case UserType.Admin:
@@ -206,8 +201,6 @@ public class AccountController(ILogger<AccountController> logger, ApplicationDbC
             return RedirectToAction(nameof(Dashboard));
         }
 
-        
-
         // Get current user data
         var NewUser = context.Users.FirstOrDefault(u => u.Id == user.Id);
 
@@ -243,7 +236,7 @@ public class AccountController(ILogger<AccountController> logger, ApplicationDbC
             }
         try
         { 
-            // Attempt to edit the user (add later)
+            // Attempt to edit the user (updates database)
             context.Update(NewUser);
             await context.SaveChangesAsync();
 
@@ -252,16 +245,11 @@ public class AccountController(ILogger<AccountController> logger, ApplicationDbC
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error creating user by admin.");
-            TempData["Error"] = "An error occurred when creating the account.";
+            logger.LogError(ex, "Error editing user by admin.");
+            TempData["Error"] = "An error occurred when editing the account.";
             return RedirectToAction("Index", "Admin");
         }
     }
-
-        //TempData["Error"] = "You entered an invalid username or password.";
-        //return RedirectToAction(nameof(EditUser));
-    //}
-
 
     // Only admins can access the delete user page
     [Authorize(Roles = "Admin")]
@@ -304,7 +292,7 @@ public class AccountController(ILogger<AccountController> logger, ApplicationDbC
         catch (Exception ex)
         {
             logger.LogError(ex, "Error deleting user by admin.");
-            TempData["Error"] = "An error occurred when creating the account.";
+            TempData["Error"] = "An error occurred when deleting the account.";
             return RedirectToAction("Index", "Admin");
         }
      }
