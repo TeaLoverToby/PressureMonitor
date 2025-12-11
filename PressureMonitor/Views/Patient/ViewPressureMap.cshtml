@@ -613,52 +613,40 @@
         function drawHeatmap(data) {
             // Clear prior drawing (incase there was a prior heat map)
             heatmapCtx.clearRect(0, 0, heatmapCanvas.width, heatmapCanvas.height);
-
             if (!data || data.length !== 32) {
                 console.error('Invalid data for rendering, must be a 32x32 matrix.');
                 return;
             }
-
             // We know that the value range is 0 - 256 so we can define min/max.
             let min = 257;
             let max = -1;
             let sum = 0;
             let count = 0;
             let activePixels = 0;
-
-            // Loop through the 2D array to find min, max, average and contact area
+            // Single loop to calculate metrics and draw the heatmap
             for (let row = 0; row < GRID_SIZE; row++) {
                 for (let col = 0; col < GRID_SIZE; col++) {
                     const value = data[row][col];
+                    // Calculate metrics
                     min = Math.min(min, value);
                     max = Math.max(max, value);
                     sum += value;
                     count++;
                     if (value > 0) activePixels++;
+                    // Draw the cell
+                    heatmapCtx.fillStyle = translateColor(value);
+                    heatmapCtx.fillRect(col * CELL_PIXEL_SIZE, row * CELL_PIXEL_SIZE, CELL_PIXEL_SIZE, CELL_PIXEL_SIZE);
                 }
             }
-
             const average = Math.round(sum / count);
             const totalPixels = GRID_SIZE * GRID_SIZE;
             const contactAreaPercentage = ((activePixels / totalPixels) * 100).toFixed(1);
-
             // Update the metrics display
             document.getElementById('minValue').textContent = min;
             document.getElementById('maxValue').textContent = max;
             document.getElementById('avgValue').textContent = average;
             document.getElementById('contactArea').textContent = `${contactAreaPercentage}%`;
             document.getElementById('pressureRange').textContent = min + " - " + max;
-
-            // Rebuild the heatmap
-            for (let row = 0; row < GRID_SIZE; row++) {
-                for (let col = 0; col < GRID_SIZE; col++) {
-                    const value = data[row][col];
-                    // Draw the cell
-                    heatmapCtx.fillStyle = translateColor(value);
-                    heatmapCtx.fillRect(col * CELL_PIXEL_SIZE, row * CELL_PIXEL_SIZE, CELL_PIXEL_SIZE, CELL_PIXEL_SIZE);
-                }
-            }
-
             // Cache the matrix data for the hover logic
             heatmapCanvas.heatmapData = data;
         }
@@ -715,16 +703,13 @@
                 if (options.hoursBack) params.append('hoursBack', options.hoursBack);
                 if (options.from) params.append('from', options.from);
                 if (options.to) params.append('to', options.to);
-                
                 const response = await fetch(`/PressureMap/GetAverage?${params}`);
                 const result = await response.json();
-
                 // Gets the matrix data of the average map
                 if (result && result.averageMap && result.averageMap.length === 32) {
                     errorElement.hidden = true;
                     heatmapCanvas.hidden = false;
                     drawHeatmap(result.averageMap);
-                    
                     // Display duration from frame count
                     if (result.durationSeconds !== undefined) {
                         const totalSeconds = result.durationSeconds;
@@ -750,7 +735,6 @@
                 hideLoading('heatmapLoading');
             }
         }
-        
         // Initialize both graph and heatmap on page load
         loadDay({ hoursBack: 24 });
     </script>
