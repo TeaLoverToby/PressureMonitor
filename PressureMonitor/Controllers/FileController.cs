@@ -14,10 +14,21 @@ using WordDocument = DocumentFormat.OpenXml.Wordprocessing.Document;
 
 namespace PressureMonitor.Controllers;
 
+/// <summary>
+/// Manages file upload and downloads for pressure data reports (CSV, PDF, DOCX).
+/// </summary>
+/// <param name="logger"></param>
+/// <param name="context"></param>
 [Authorize(Roles = "Patient,Clinician")]
 public class FileController(ILogger<FileController> logger, ApplicationDbContext context) : Controller
 {
 
+    /// <summary>
+    /// Generates and downloads a CSV file containing raw pressure sensor data for a specific day.
+    /// </summary>
+    /// <param name="day">The date of the data to download.</param>
+    /// <param name="patientId">Optional: The ID of the patient - required by clinician view.</param>
+    /// <returns>A CSV file download.</returns>
     [HttpGet]
     public async Task<IActionResult> DownloadCsv(string day, int? patientId = null)
     {
@@ -68,10 +79,17 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         return File(fileBytes, "text/csv", fileName);
     }
 
+    /// <summary>
+    /// Generates and downloads a summary report in the specified format (DOCX, PDF, or TXT).
+    /// </summary>
+    /// <param name="day">The date of the report.</param>
+    /// <param name="format">The file format.</param>
+    /// <param name="patientId">Optional: The ID of the patient - required by clinicians.</param>
+    /// <returns>A file download of the generated report.</returns>
     [HttpGet]
     public async Task<IActionResult> DownloadReport(string day, string format, int? patientId = null)
     {
-        // Get the user from the cookie
+        // Get the logged in user's id
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userIdStr) || !int.TryParse(userIdStr, out var userId))
         {
@@ -83,6 +101,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             return BadRequest("Invalid day format");
         }
 
+        // Get the patient, if the patientId was already provided (clinician) then we use that else find by userId (patient)
         var patient = await context.Patients.Include(p => p.PressureMaps).ThenInclude(pm => pm.Frames).FirstOrDefaultAsync(p => patientId.HasValue ? p.Id == patientId.Value : p.UserId == userId);
 
         if (patient == null) return NotFound();
@@ -91,7 +110,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         var mapsForDay = patient.PressureMaps.Where(pm => pm.Day == dateOnly).ToList();
         if (mapsForDay.Count == 0) return NotFound("No data found for this day.");
 
-        // Calculate statistics from all the sessions/maps
+        // Calculate statistics to be used by the report generators
         var (reportData, topRegions) = CalculateReportData(mapsForDay, patient.Id, dateOnly);
 
         // Generate report based on format
@@ -103,6 +122,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         };
     }
     
+    // Calculates the report data and top high pressure regions for a set of pressure maps on a specific day.
     private (ReportData data, List<(int r, int c, double avg)> topRegions) CalculateReportData(List<PressureMap> maps, int patientId, DateOnly dateOnly)
     {
         // Combine all frames from all sessions
@@ -113,7 +133,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             
         if (frames.Count == 0)
         {
-            // Basically an empty data report
+            // Return empty report data if no frames are found
             return (new ReportData
             {
                 PatientId = patientId,
@@ -131,7 +151,6 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             }, new List<(int, int, double)>());
         }
 
-      // Calculate the statistics for the report
         int maxPressure = 0;
         int minPressure = int.MaxValue;
         int maxPeakPressure = 0;
@@ -139,7 +158,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         long totalPressureSum = 0;
         long totalCellCount = 0;
 
-        // To find high pressure regions, we'll need to average each cell across all frames
+        // Used to store the cumulative sum of each cell to calculate averages later
         var averageMap = new long[32, 32];
 
         foreach (var frame in frames)
@@ -149,11 +168,11 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             if (frame.PeakPressure > maxPeakPressure) maxPeakPressure = frame.PeakPressure;
             totalContactArea += frame.ContactAreaPercentage;
 
-            // We cannot really avoid deserializing the matrix data as we need to access the cells
-            // TODO: Might be able to look into storing average data for each frame in the DB
+            // Fetch the matrix data for this frame - JSON deserialized
             var data = frame.Data;
             if (data == null) continue;
 
+            // Iterate through every cell in the frame
             for (int r = 0; r < 32; r++)
             {
                 for (int c = 0; c < 32; c++)
@@ -175,7 +194,6 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
 
         // Top 10 high pressure regions
         const int topRegionsCount = 10;
-        // Turns out that c# has tuple support!
         var cellAverages = new List<(int r, int c, double avg)>();
         for (int r = 0; r < 32; r++)
         {
@@ -204,13 +222,11 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
             OverallAverage = overallAverage,
             AverageContactArea = averageContactArea
         };
-
-        // TODO: Need to add some sort of alert or specific details for the report
-
         return (reportData, topRegions);
     }
 
 
+    // Generates the report in plain text format
     private IActionResult GenerateTxtReport(ReportData data, List<(int r, int c, double avg)> topRegions, DateOnly dateOnly)
     {
         var sb = new StringBuilder();
@@ -245,7 +261,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
     }
 
 
-    //CITE: https://learn.microsoft.com/en-us/office/open-xml/word/how-to-create-a-word-processing-document-by-providing-a-file-name
+    // Generates the report using DocX format (Word document)
     private IActionResult GenerateDocxReport(ReportData data, List<(int r, int c, double avg)> topRegions, DateOnly dateOnly)
     {
         using var stream = new MemoryStream();
@@ -286,6 +302,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         return File(fileBytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", $"Report_{dateOnly:yyyyMMdd}.docx");
     }
 
+    // Helper method to add a paragraph to the Word document
     private void AddParagraph(Body body, string text)
     {
         // Similar to HTML, a paragraph represents a body of text
@@ -296,6 +313,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         run.AppendChild(new Text(text));
     }
 
+    // Generates the report in PDF format using QuestPDF
     private IActionResult GeneratePdfReport(ReportData data, List<(int r, int c, double avg)> topRegions, DateOnly dateOnly)
     {   
         var document = QuestPDF.Fluent.Document.Create(container =>
@@ -354,6 +372,7 @@ public class FileController(ILogger<FileController> logger, ApplicationDbContext
         return File(pdfBytes, "application/pdf", $"Report_{dateOnly:yyyyMMdd}.pdf");
     }
 
+    // Data structure to hold report data
     private class ReportData
     {
         public int PatientId { get; set; }

@@ -9,17 +9,27 @@ using PressureMonitor.Models;
 
 namespace PressureMonitor.Controllers;
 
+/// <summary
+/// Manages the uploading, processing and retrieval of pressure map data for patients and clinicians.
+/// </summary>
 [Authorize(Roles = "Patient,Clinician")]
 public class PressureMapController(ILogger<PressureMapController> logger, ApplicationDbContext context) : Controller
 {
     // Constants
     private const int FramesPerSecond = 15;
 
+    /// <summary
+    /// Uploads and parses a CSV file containing pressure sensor data.
+    /// </summary>
+    /// <param name="file">The uploaded CSV file.</param>
+    /// <param name="startTime">Optional manual start time override</param>
+    /// <param name="useCurrentTime">If true, uses the current server time for the timestamp.</param>
+    /// <returns>Redirects to the Patient Upload view with success or error messages.</returns>
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Upload(IFormFile file, string? startTime, bool useCurrentTime = false)
     {
-        // Get the user ID from the cookie
+        // Check the user is authenticated
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
         {
@@ -27,7 +37,7 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             return RedirectToAction("Login", "Account");
         }
 
-        // Load the patient from the database
+        // Retireve the patient record linked with the authenticated user
         var patient = await context.Patients
             .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId);
@@ -43,7 +53,7 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             TempData["Error"] = "Please select a CSV file to upload.";
             return RedirectToAction("Upload", "Patient");
         }
-
+        // The requirements specify that the data is in CSV format
         if (!file.FileName.EndsWith(".csv"))
         {
             TempData["Error"] = "Only CSV files are allowed.";
@@ -52,8 +62,7 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
 
         try
         {
-            // First, we need to extract the date from the file name
-            // Format will be ID_YYYYMMDD;
+            // Parse the date from the filename (Expected format: ID_YYYYMMDD.csv)
             string rawName = Path.GetFileNameWithoutExtension(file.FileName);
             string[] nameParts = rawName.Split('_');
             if (nameParts.Length != 2)
@@ -61,16 +70,16 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 TempData["Error"] = "Filename format is incorrect. Please use ID_YYYYMMDD.csv format.";
                 return RedirectToAction("Upload", "Patient");
             }
-
+            // Check the date is in the file name
             string datePart = nameParts[1];
-            if (!DateTime.TryParseExact(datePart, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None,
-                    out DateTime date))
+            if (!DateTime.TryParseExact(datePart, "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out DateTime date))
             {
+    
                 TempData["Error"] = "Filename format is incorrect. Please use ID_YYYYMMDD.csv format.";
                 return RedirectToAction("Upload", "Patient");
             }
 
-            // Get the start time for the session
+            // Determine the session start time
             DateTime sessionStartTime;
             if (useCurrentTime)
             {
@@ -88,9 +97,9 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 sessionStartTime = date;
             }
 
-            // So, what we want to assume is that a CSV file contains 32x32 matricies in a time-order
-            // The software is 15FPS, so each second of data is 15 matricies.
-            
+            // It is assumed that:
+            // 1. CSV contains 32x32 matricies in time-order
+            // 2. Time difference between frames is always less than a second
             const int TIME_DIFF_MILLIS = 1000 / FramesPerSecond;
 
             int currentRow = 0;
@@ -104,7 +113,8 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             // Collect all frames in memory first
             List<PressureFrame> frames = new List<PressureFrame>();
 
-            // Using means that it disposes of the stream when done using it - memory gooood
+            // A stream is used to read the file line by line
+            // Each line represents a row in the matrix
             using (var stream = file.OpenReadStream())
             using (var reader = new StreamReader(stream, Encoding.UTF8))
             {
@@ -129,11 +139,10 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
 
                     currentRow++;
 
-                    // Check if we've completed a full 32x32 matrix
+                    // Check a full 32x32 matrix was populated
                     if (currentRow >= 32)
                     {
-                        // We have a full matrix, so we can process it
-                        // The date is incremented as we assume time-ordered
+                        // The date is incremented as it is time-ordered
                         lastTime = lastTime.AddMilliseconds(TIME_DIFF_MILLIS);
 
                         PressureFrame frame = new PressureFrame()
@@ -144,7 +153,7 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
 
                         frames.Add(frame);
 
-                        // Reset for next matrix
+                        // Reset values for next matrix
                         currentRow = 0;
                         currentMatrix = new int[32][];
                         for (int i = 0; i < 32; i++)
@@ -163,17 +172,17 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
 
             var day = DateOnly.FromDateTime(date);
             
-            // Need to get the start and end time for the session
+            // Determine the total duration of the new session
             var newSessionStart = frames.Min(f => f.Timestamp);
             var newSessionEnd = frames.Max(f => f.Timestamp);
             
-            // Get maps that are on the same day
+            // Get maps that are on the same day to check for overlaps
             var existingMaps = await context.PressureMaps
                 .Include(pm => pm.Frames)
                 .Where(pm => pm.PatientId == patient.Id && pm.Day == day)
                 .ToListAsync();
             
-            // Findsessions  that overlap swith the new session's time range
+            // Find sessions that overlap with the new session's time range
             var overlapSessions = existingMaps.Where(pm =>
             {
                 if (pm.Frames.Count == 0) return false;
@@ -183,7 +192,7 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 return newSessionStart <= existingEnd && newSessionEnd >= existingStart;
             }).ToList();
             
-            // Remove overlapping sessions
+            // Remove overlapping sessions to prevent duplicate data
             if (overlapSessions.Count > 0)
             {
                 foreach (var overlapping in overlapSessions)
@@ -229,7 +238,10 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
     }
 
 
-    // Will write proper comments later but this is meant to act as a "wrapper" for the shared logic
+    /// <summary>
+    /// Retrieves a list of dates for which the current patient has pressure map data.
+    /// </summary>
+    /// <returns>JSON list of date strings (yyyy-MM-dd).</returns>
     [HttpGet]
     public async Task<IActionResult> GetDays()
     {
@@ -238,7 +250,14 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         return Json(GetPatientDays(patient));
     }
     
-    // This gets the average pressure map but does some patient validation first
+    /// <summary>
+    /// Calculates the average pressure map for a specific time range.
+    /// </summary>
+    /// <param name="day">Target date.</param>
+    /// <param name="hoursBack">Optional: Filter for the last N hours of the day.</param>
+    /// <param name="from">Optional: Filter start timestamp.</param>
+    /// <param name="to">Optional: Filter end timestamp.</param>
+    /// <returns>JSON object containing the 32x32 average matrix.</returns>
     [HttpGet]
     public async Task<IActionResult> GetAverage(string? day, int? hoursBack, string? from, string? to)
     {
@@ -251,7 +270,14 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         return Json(GetAverageMap(patient, dateOnly, hoursBack, from, to));
     }
 
-    // This gets the graph data points but does some patient validation first
+    /// <summary>
+    /// Gets the data points for the pressure graph.
+    /// </summary>
+    /// <param name="day">Target date.</param>
+    /// <param name="hoursBack">Optional: Filter for the last N hours.</param>
+    /// <param name="from">Optional: Filter start timestamp.</param>
+    /// <param name="to">Optional: Filter end timestamp.</param>
+    /// <returns>JSON object containing data points time-ordered.</returns>
     [HttpGet]
     public async Task<IActionResult> GetGraphData(string? day, int? hoursBack, string? from, string? to)
     {
@@ -264,6 +290,10 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         return Json(GetGraphData(patient, dateOnly, hoursBack, from, to));
     }
     
+    /// <summary>
+    /// Deletes a specific pressure map session.
+    /// </summary>
+    /// <param name="id">The ID of the pressure map to delete.</param>
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Delete(int id)
@@ -284,7 +314,7 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             return RedirectToAction("Upload", "Patient");
         }
 
-        // Find the pressure map and check that it belongs to the patient (incase it was already deleted)
+        // Find the pressure map and verify that it belongs to the patient before deletion
         var map = await context.PressureMaps
             .FirstOrDefaultAsync(pm => pm.Id == id && pm.PatientId == patient.Id);
 
@@ -298,7 +328,7 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         // Get the number of frames without loading them all
         var frameCount = await context.PressureFrames.CountAsync(f => f.PressureMapId == id);
 
-        // Delete the pressure map, casading will delete the frames automatically
+        // Delete the pressure map, cascading will delete the frames automatically
         context.PressureMaps.Remove(map);
         await context.SaveChangesAsync();
 
@@ -307,33 +337,31 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         return RedirectToAction("Upload", "Patient");
     }
     
-    // Get the current user's patient record (they must be logged in)
+    // Get the patient record linked with the currently logged in user
     private async Task<Patient?> GetCurrentPatient()
     {
-        // Get the user ID from the claims
+        // Fetch the user ID from the claims
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userIdStr) || !int.TryParse(userIdStr, out var userId)) return null;
         
-        // Load the patient with that user id
+        // Fetch patient with that user id
         return await context.Patients
             .Include(p => p.PressureMaps)
             .ThenInclude(pm => pm.Frames)
             .FirstOrDefaultAsync(p => p.UserId == userId);
     }
     
-    // This acts as a way of checking that a clinician can only access their assigned patients
+    // Verifies that a clinician has access to the requested patient
     private async Task<Patient?> GetClinicianPatient(int patientId)
     {
-        // Get the user ID from the claims
         var userIdStr = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userIdStr) || !int.TryParse(userIdStr, out var userId)) return null;
         
-        // Checks if there is a clinician with the user id (to prevent smelly liers)
+        // Ensure the current user is a valid clinician
         var clinician = await context.Clinicians.FirstOrDefaultAsync(c => c.UserId == userId);
         if (clinician == null) return null;
         
-        //Get the patients who have this clinician assigned
-        // TODO: Might be able to use Clinician.Patients instead???
+        // Retrieve the patient record
         return await context.Patients
             .Include(p => p.PressureMaps)
             .ThenInclude(pm => pm.Frames)
@@ -341,7 +369,7 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             .FirstOrDefaultAsync(p => p.Id == patientId); // Temporary: allow any patient for demo
     }
     
-    // Seperated into a method to prevent code duplication
+    // Helper to extract the list of days a patient has pressure map data for
     private List<string> GetPatientDays(Patient patient)
     {
         return patient.PressureMaps
@@ -355,25 +383,21 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
     {
         // Get the pressure maps for the requested day
         var mapsForDay = patient.PressureMaps.Where(pm => pm.Day == dateOnly).ToList();
-        // Empty result if no maps
         if (mapsForDay.Count == 0) return new { averageMap = new int[0][] };
         
-        // Calculate and return the time range
+        // Calculate the filter time range
         var (rangeStart, rangeEnd) = getTimeRange(dateOnly, hoursBack, from, to);
         
-        // Combine frames from all sessions for this day and filter by time range
+        // Combine frames from all sessions for this day and apply time filter
         var filteredFrames = mapsForDay
             .SelectMany(m => m.Frames)
             .Where(f => f.Timestamp >= rangeStart && f.Timestamp < rangeEnd)
             .ToList();
 
-        // If no frames in range, return empty array
         if (filteredFrames.Count == 0)
         {
             return new { averageMap = new int[0][] };
         }
-
-        // TODO: Moved the calculation code to its own method
         // Calculate the average map from the filtered frames
         var averageMap = CalculateAverageMap(filteredFrames);
         return new { averageMap };
@@ -385,10 +409,9 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         var mapsForDay = patient.PressureMaps.Where(pm => pm.Day == dateOnly).ToList();
         if (mapsForDay.Count == 0) return Array.Empty<object>();
 
-        // This is the range that the user will filter by (initially the full day)
         var (rangeStart, rangeEnd) = getTimeRange(dateOnly, hoursBack, from, to);
 
-        // Combine frames from all sessions for this day then filter by time range
+        // Filter and sort frames by time
         var filteredFrames = mapsForDay
             .SelectMany(m => m.Frames)
             .Where(f => f.Timestamp >= rangeStart && f.Timestamp < rangeEnd)
@@ -410,12 +433,12 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             })
             .Select(g => new { 
                 t = g.Key.ToString("o"), 
-                // We take the average of the peak pressures in this group
+                // Calculate the average peak pressure for this group
                 v = (int)Math.Round(g.Average(f => f.PeakPressure)) 
             })
-            .ToList(); // All the points are now collected into framePoints
+            .ToList();
 
-        // This can be converted to JSON later so the graph can parse it
+        // Converted to JSON for frontend support
         return new {
             day = dateOnly.ToString("yyyy-MM-dd"),
             rangeStart = rangeStart.ToString("o"),
@@ -424,7 +447,7 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         };
     }
     
-    // New helper method since time range is used in multiple places
+    // Helper method to parse and calculate start/end times based on optional filter parameters
     private (DateTime rangeStart, DateTime rangeEnd) getTimeRange(DateOnly dateOnly, int? hoursBack, string? from, string? to)
     {
         // This is the range that the user will filter by (initially the full day)
@@ -456,8 +479,6 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         return (rangeStart, rangeEnd);
     }
     
-
-    // TODO: Maybe I should look to optimize by storing the average map for each time frame (1h, 6h, etc)?
     private int[][] CalculateAverageMap(List<PressureFrame> frames)
     {
         var averageMap = new int[32][];
@@ -466,6 +487,7 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             averageMap[i] = new int[32];
         }
 
+        // Sum all frames
         foreach (var frame in frames)
         {
             var data = frame.Data;
@@ -478,6 +500,7 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             }
         }
 
+        // Divide by the number of frames to get the average
         for (var i = 0; i < 32; i++)
         {
             for (var j = 0; j < 32; j++)
@@ -488,7 +511,9 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         return averageMap;
     }
     
-    // TODO: Jack, this will be useful for you as it allows clinicians to get data for their patients
+    /// <summary>
+    /// Get days for a specific patient.
+    /// </summary>
     [HttpGet]
     [Authorize(Roles = "Clinician")]
     public async Task<IActionResult> GetPatientDays(int patientId)
@@ -498,6 +523,9 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         return Json(GetPatientDays(patient));
     }
     
+    /// <summary>
+    /// Get average pressure map for a specific patient.
+    /// </summary>
     [HttpGet]
     [Authorize(Roles = "Clinician")]
     public async Task<IActionResult> GetPatientAverage(int patientId, string? day, int? hoursBack, string? from, string? to)
@@ -511,6 +539,9 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         return Json(GetAverageMap(patient, dateOnly, hoursBack, from, to));
     }
     
+    /// <summary>
+    /// Get graph data for a specific patient.
+    /// </summary>
     [HttpGet]
     [Authorize(Roles = "Clinician")]
     public async Task<IActionResult> GetPatientGraphData(int patientId, string? day, int? hoursBack, string? from, string? to)

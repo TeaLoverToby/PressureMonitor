@@ -7,6 +7,10 @@ using Microsoft.Data.Sqlite;
 
 namespace PressureMonitor.Controllers;
 
+
+/// <summary>
+/// Controller for Patient-specific actions (Dashboard, Uploads, Comments)
+/// </summary>
 [Authorize(Roles = "Patient")]
 public class PatientController(ILogger<PatientController> logger, ApplicationDbContext context) : Controller
 {
@@ -131,6 +135,10 @@ public class PatientController(ILogger<PatientController> logger, ApplicationDbC
         }
     }
     
+    /// <summary>
+    /// Displays the Upload view, allows patients to upload their pressure map data.
+    /// </summary>
+    /// <returns>The Upload view showing existing pressure maps for the patient.</returns>
     [HttpGet]
     public async Task<IActionResult> Upload()
     {
@@ -154,15 +162,22 @@ public class PatientController(ILogger<PatientController> logger, ApplicationDbC
         return View(patient);
     }
 
+    /// <summary>
+    /// View the pressure map session for a specific day.
+    /// </summary>
+    /// <param name="day">The date of the session to view.</param>
+    /// <returns>The ViewPressureMap view with session data.</returns>
     [HttpGet]
     public async Task<IActionResult> ViewPressureMap(string day)
     {
+        // Get the logged in patient's user ID
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
         {
             return RedirectToAction("Login", "Account");
         }
 
+        // Get the patient record
         var patient = await context.Patients
             .Include(p => p.User)
             .FirstOrDefaultAsync(p => p.UserId == userId);
@@ -172,12 +187,14 @@ public class PatientController(ILogger<PatientController> logger, ApplicationDbC
             return RedirectToAction("Login", "Account");
         }
 
+        // Attempt to parse the day parameter
         if (!DateOnly.TryParse(day, out var dayOnly))
         {
             TempData["Error"] = "Invalid day format.";
             return RedirectToAction(nameof(Upload));
         }
 
+        // Get the pressure map for that day
         var pressureMap = await context.PressureMaps
             .Include(pm => pm.Frames)
             .FirstOrDefaultAsync(pm => pm.PatientId == patient.Id && pm.Day == dayOnly);
@@ -190,6 +207,7 @@ public class PatientController(ILogger<PatientController> logger, ApplicationDbC
 
         return View(pressureMap);
     }
+
     [HttpGet]
     public async Task<IActionResult> DataView()
     {

@@ -1,4 +1,4 @@
-﻿@model PressureMonitor.Models.PressureMap
+@model PressureMonitor.Models.PressureMap
 @{
     ViewData["Title"] = "Pressure Map - " + Model.Day.ToString("MM/dd/yyyy");
     var formattedDay = Model.Day.ToString("MM/dd/yyyy");
@@ -8,7 +8,7 @@
     .page-title {
         font-size: 2rem;
         font-weight: bold;
-        color: #13438b
+        color: #13438b;
         margin-bottom: 20px;
     }
     
@@ -491,7 +491,7 @@
                 peakChart.destroy();
             }
 
-            // Followed docuementation from the Chart.js website
+            // Followed documentation from the Chart.js website
             peakChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -586,19 +586,25 @@
         const heatmapCanvas = document.getElementById('heatmapCanvas');
         const heatmapCtx = heatmapCanvas.getContext('2d');
 
+        // Constants
         const MAX_PRESSURE_VALUE = 255;
         const GRID_SIZE = 32;
         const CELL_PIXEL_SIZE = 12;
 
+        // Set canvas size so the pressure map fits correctly
         heatmapCanvas.width = GRID_SIZE * CELL_PIXEL_SIZE;
         heatmapCanvas.height = GRID_SIZE * CELL_PIXEL_SIZE;
-
-        // TODO: Might change the color wheel selection later - looks a bit ugly
         
-        // Color mapping function - converts value (0-255) to HSL Color
-        // HSL from Blue (240) to Red (0)
+        /**
+         * Converts a pressure value (0-255) to an HSL color.
+         * Mapping: 
+         * 0   -> Blue (Hue 240)
+         * 128 -> Green (Hue 120)
+         * 255 -> Red (Hue 0)
+         */
         function translateColor(pressure) {
             const adjusted = Math.min(pressure / MAX_PRESSURE_VALUE, 1.0);
+            // Hue goes from 240 (blue) to 0 (red) - inverted
             const hue = Math.floor(240 * (1 - adjusted));
             return `hsl(${hue}, 100%, 50%)`;
         }
@@ -620,6 +626,7 @@
             let count = 0;
             let activePixels = 0;
 
+            // Loop through the 2D array to find min, max, average and contact area
             for (let row = 0; row < GRID_SIZE; row++) {
                 for (let col = 0; col < GRID_SIZE; col++) {
                     const value = data[row][col];
@@ -635,15 +642,18 @@
             const totalPixels = GRID_SIZE * GRID_SIZE;
             const contactAreaPercentage = ((activePixels / totalPixels) * 100).toFixed(1);
 
+            // Update the metrics display
             document.getElementById('minValue').textContent = min;
             document.getElementById('maxValue').textContent = max;
             document.getElementById('avgValue').textContent = average;
             document.getElementById('contactArea').textContent = `${contactAreaPercentage}%`;
             document.getElementById('pressureRange').textContent = min + " - " + max;
 
+            // Rebuild the heatmap
             for (let row = 0; row < GRID_SIZE; row++) {
                 for (let col = 0; col < GRID_SIZE; col++) {
                     const value = data[row][col];
+                    // Draw the cell
                     heatmapCtx.fillStyle = translateColor(value);
                     heatmapCtx.fillRect(col * CELL_PIXEL_SIZE, row * CELL_PIXEL_SIZE, CELL_PIXEL_SIZE, CELL_PIXEL_SIZE);
                 }
@@ -683,7 +693,7 @@
         });
         
         function clearHeatmapDisplay() {
-            // Clear everything!!!
+            // Clear all metrics and the heatmap
             heatmapCtx.clearRect(0, 0, heatmapCanvas.width, heatmapCanvas.height);
             heatmapCanvas.heatmapData = null;
             document.getElementById('minValue').textContent = '-';
@@ -696,6 +706,7 @@
             document.getElementById('hoverValue').textContent = '-';
         }
         
+        // Load heatmap data for the selected day and time range
         async function loadHeatmap(options = {}) {
             showLoading('heatmapLoading');
             const errorElement = document.getElementById("hidden-canvas-error");
