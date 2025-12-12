@@ -4,21 +4,22 @@ using System.Text.Json;
 
 namespace PressureMonitor.Models;
 
+// <summary>
+// Represents a pressure map session for a patient on a specific day.
 public class PressureMap
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
-    
     public int PatientId { get; set; }
-    
+
     [ForeignKey("PatientId")]
     public Patient Patient { get; set; } = null!;
-    
     public DateOnly Day { get; set; }
+    // Collection of pressure frames for this session
     public List<PressureFrame> Frames { get; set; } = [];
     
-    // This might be redundant now as we have a version of this that supports ranges in the controller
+    // Calculate the average pressure map across all frames
     public int[][] GetAveragePressureMap()
     {
         var averageMap = new int[32][];
@@ -32,6 +33,7 @@ public class PressureMap
             return averageMap;
         }
 
+        // Sum up all frames
         foreach (var frame in Frames)
         {
             var data = frame.Data;
@@ -58,37 +60,34 @@ public class PressureMap
 
 }
 
-// So a pressure map can consist of time-ordered multiple frames
+// <summary>
+// Represents a single frame of pressure data within a pressure map session.
+// </summary>
 public class PressureFrame
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
     public int Id { get; set; }
-    
     // Foreign key to PressureMap
     public int PressureMapId { get; set; }
-    
     [ForeignKey("PressureMapId")]
     public PressureMap PressureMap { get; set; } = null!;
-    
     public DateTime Timestamp { get; set; }
-    
+    // Raw JSON string representing the 32x32 pressure data matrix, stored in the database.
     public string DataJson { get; set; } = "[]";
-
-    // Stored metrics - calculated when Data is set
+    // Avereage value of all pixels in the frame.
     public int AveragePressure { get; set; }
     public int MinValue { get; set; }
     public int MaxValue { get; set; }
-    
     // Peak Pressure Index: Highest recorded pressure in the frame, excluding any areas of less than 10 pixels
     public int PeakPressure { get; set; }
-    
-    // Contact Area %: Percentage of pixels above lower threshold (currently 0), indicating
-    //  how much of a square sensor mat is covered by the person sitting on it.
+    /// <summary>
+    // Contact Area %: Percentage of pixels above lower threshold
+    /// </summary>
     public double ContactAreaPercentage { get; set; }
-    
-    // SQLITE does not support arrays - typically only primitive types
-    // So we have to store as a JSON String and deserialize on access
+    /// <summary>
+    /// Provides access to the 32x32 pressure matrix. If set, calculates and updates metrics.
+    /// </summary>
     [NotMapped]
     public int[][] Data
     {
@@ -96,11 +95,12 @@ public class PressureFrame
         set
         {
             DataJson = JsonSerializer.Serialize(value);
-            // This is done so that we don't have to calculate these every time they are fetched
+            // Only calculated once to optimize performance
             CalculateMetrics(value);
         }
     }
     
+    // Internal helper to compute frame statistics
     private void CalculateMetrics(int[][] data)
     {
         var sum = 0;
@@ -108,6 +108,7 @@ public class PressureFrame
         var max = 0;
         var activePixels = 0;
         const int totalPixels = 32 * 32;
+        const int contactThreshold = 15; // Minimum pressure value to count as contact
         
         // Iterate through all cells in matrix
         for (var i = 0; i < 32; i++)
@@ -119,7 +120,7 @@ public class PressureFrame
                 
                 if (value < min) min = value;
                 if (value > max) max = value;
-                if (value > 0) activePixels++;
+                if (value > contactThreshold) activePixels++;
             }
         }
 
@@ -130,6 +131,7 @@ public class PressureFrame
         PeakPressure = CalculatePeakPressure(data);
     }
     
+    // Identifies the highest pressure point within valid contact regions.
     private int CalculatePeakPressure(int[][] data)
     {
         const int MINIMUM_AREA_SIZE = 10;
@@ -141,7 +143,7 @@ public class PressureFrame
         {
             for (var j = 0; j < 32; j++)
             {
-                // We check if this is a new area (not visited) and has pressure above 0
+                // Start a search if we find an unvisited cell with pressure > 0
                 if (!visited[i, j] && data[i][j] > 0)
                 {
                     var (areaSize, maxInArea) = FloodFillArea(i, j, data, visited);
@@ -159,7 +161,7 @@ public class PressureFrame
     }
     
     // Flood Fill Algorithm - used to find connected areas of pressure above threshold
-    // https://www.geeksforgeeks.org/dsa/flood-fill-algorithm/ 
+    // Reference: https://www.geeksforgeeks.org/dsa/flood-fill-algorithm/ 
     private (int areaSize, int maxPressure) FloodFillArea(int startX, int startY, int[][] data, bool[,] visited)
     {
         // The stack allows us to track which cells to visit

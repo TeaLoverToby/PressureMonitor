@@ -485,12 +485,10 @@
         */
         function buildChart(labels, data) {
             const ctx = document.getElementById('peakChart').getContext('2d');
-
             // If a previous one exists, we remove it first
             if (peakChart) {
                 peakChart.destroy();
             }
-
             // Followed documentation from the Chart.js website
             peakChart = new Chart(ctx, {
                 type: 'line',
@@ -530,7 +528,6 @@
                     }
                 }
             });
-            
             // Update peak pressure metric
             if (data.length > 0) {
                 currentPeakValue = Math.max(...data);
@@ -632,7 +629,7 @@
                     max = Math.max(max, value);
                     sum += value;
                     count++;
-                    if (value > 0) activePixels++;
+                    if (value > 15) activePixels++;
                     // Draw the cell
                     heatmapCtx.fillStyle = translateColor(value);
                     heatmapCtx.fillRect(col * CELL_PIXEL_SIZE, row * CELL_PIXEL_SIZE, CELL_PIXEL_SIZE, CELL_PIXEL_SIZE);
