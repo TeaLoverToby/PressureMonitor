@@ -36,18 +36,13 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             TempData["Error"] = "Authentication error. Please log in again.";
             return RedirectToAction("Login", "Account");
         }
-
         // Retireve the patient record linked with the authenticated user
-        var patient = await context.Patients
-            .Include(p => p.User)
-            .FirstOrDefaultAsync(p => p.UserId == userId);
-        
+        var patient = await context.Patients.Include(p => p.User).FirstOrDefaultAsync(p => p.UserId == userId);
         if (patient == null)
         {
             TempData["Error"] = "You must be a patient to upload files.";
             return RedirectToAction("Upload", "Patient");
         }
-
         if (file == null || file.Length == 0)
         {
             TempData["Error"] = "Please select a CSV file to upload.";
@@ -59,7 +54,6 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             TempData["Error"] = "Only CSV files are allowed.";
             return RedirectToAction("Upload", "Patient");
         }
-
         try
         {
             // Parse the date from the filename (Expected format: ID_YYYYMMDD.csv)
@@ -78,7 +72,6 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 TempData["Error"] = "Filename format is incorrect. Please use ID_YYYYMMDD.csv format.";
                 return RedirectToAction("Upload", "Patient");
             }
-
             // Determine the session start time
             DateTime sessionStartTime;
             if (useCurrentTime)
@@ -96,12 +89,10 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 // Default to midnight if there was no specified time
                 sessionStartTime = date;
             }
-
             // It is assumed that:
             // 1. CSV contains 32x32 matricies in time-order
             // 2. Time difference between frames is always less than a second
             const int TIME_DIFF_MILLIS = 1000 / FramesPerSecond;
-
             int currentRow = 0;
             int[][] currentMatrix = new int[32][];
             for (int i = 0; i < 32; i++)
@@ -109,10 +100,8 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 currentMatrix[i] = new int[32];
             }
             DateTime lastTime = sessionStartTime;
-
             // Collect all frames in memory first
             List<PressureFrame> frames = new List<PressureFrame>();
-
             // A stream is used to read the file line by line
             // Each line represents a row in the matrix
             using (var stream = file.OpenReadStream())
@@ -122,37 +111,29 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 {
                     var line = await reader.ReadLineAsync();
                     if (string.IsNullOrWhiteSpace(line)) continue;
-
                     var values = line.Split(',');
-
                     int currentColumn = 0;
                     foreach (string str in values)
                     {
                         if (!int.TryParse(str, out int result)) break;
-                        
                         // Must be within valid range (0-255)
                         result = Math.Clamp(result, 0, 255);
                         
                         currentMatrix[currentRow][currentColumn] = result;
                         currentColumn++;
                     }
-
                     currentRow++;
-
                     // Check a full 32x32 matrix was populated
                     if (currentRow >= 32)
                     {
                         // The date is incremented as it is time-ordered
                         lastTime = lastTime.AddMilliseconds(TIME_DIFF_MILLIS);
-
                         PressureFrame frame = new PressureFrame()
                         {
                             Timestamp = lastTime,
                             Data = currentMatrix,
                         };
-
                         frames.Add(frame);
-
                         // Reset values for next matrix
                         currentRow = 0;
                         currentMatrix = new int[32][];
@@ -163,25 +144,17 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                     }
                 }
             }
-
             if (frames.IsNullOrEmpty())
             {
                 TempData["Error"] = "No frames found.";
                 return RedirectToAction("Upload", "Patient");
             }
-
             var day = DateOnly.FromDateTime(date);
-            
             // Determine the total duration of the new session
             var newSessionStart = frames.Min(f => f.Timestamp);
             var newSessionEnd = frames.Max(f => f.Timestamp);
-            
             // Get maps that are on the same day to check for overlaps
-            var existingMaps = await context.PressureMaps
-                .Include(pm => pm.Frames)
-                .Where(pm => pm.PatientId == patient.Id && pm.Day == day)
-                .ToListAsync();
-            
+            var existingMaps = await context.PressureMaps.Include(pm => pm.Frames).Where(pm => pm.PatientId == patient.Id && pm.Day == day).ToListAsync();
             // Find sessions that overlap with the new session's time range
             var overlapSessions = existingMaps.Where(pm =>
             {
@@ -191,7 +164,6 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 // We check an overlap by seeing if the new session starts before the existing one ends
                 return newSessionStart <= existingEnd && newSessionEnd >= existingStart;
             }).ToList();
-            
             // Remove overlapping sessions to prevent duplicate data
             if (overlapSessions.Count > 0)
             {
@@ -202,7 +174,6 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 await context.SaveChangesAsync();
                 logger.LogInformation("Removed {Count} overlapping session(s) for patient {PatientId} on {Day}", overlapSessions.Count, patient.Id, day);
             }
-            
             PressureMap map = new PressureMap()
             {
                 PatientId = patient.Id,
@@ -210,7 +181,6 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 Day = day,
                 Frames = frames
             };
-
             try
             {
                 await context.PressureMaps.AddAsync(map);
@@ -222,7 +192,6 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 logger.LogError(e, "Database error while saving pressure map for patient " + patient.Id);
                 return RedirectToAction("Upload", "Patient");
             }
-
             var endTimeStr = newSessionEnd.ToString("HH:mm");
             var startTimeStr = newSessionStart.ToString("HH:mm");
             TempData["Success"] = $"Uploaded {frames.Count} frames for {day:yyyy-MM-dd} ({startTimeStr} - {endTimeStr}).";
@@ -263,10 +232,8 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
     {
         if (string.IsNullOrWhiteSpace(day)) return BadRequest("day parameter required (yyyy-MM-dd)");
         if (!DateOnly.TryParse(day, out var dateOnly)) return BadRequest("Invalid day format");
-
         var patient = await GetCurrentPatient();
         if (patient == null) return Unauthorized();
-        
         return Json(GetAverageMap(patient, dateOnly, hoursBack, from, to));
     }
 
@@ -379,21 +346,19 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
             .ToList();
     }
     
+    // Helper to calculate the average pressure map for a patient on a specific day with time filtering
     private object GetAverageMap(Patient patient, DateOnly dateOnly, int? hoursBack, string? from, string? to)
     {
         // Get the pressure maps for the requested day
         var mapsForDay = patient.PressureMaps.Where(pm => pm.Day == dateOnly).ToList();
         if (mapsForDay.Count == 0) return new { averageMap = new int[0][] };
-        
         // Calculate the filter time range
-        var (rangeStart, rangeEnd) = getTimeRange(dateOnly, hoursBack, from, to);
-        
+        var (rangeStart, rangeEnd) = GetTimeRange(dateOnly, hoursBack, from, to);
         // Combine frames from all sessions for this day and apply time filter
         var filteredFrames = mapsForDay
             .SelectMany(m => m.Frames)
             .Where(f => f.Timestamp >= rangeStart && f.Timestamp < rangeEnd)
             .ToList();
-
         if (filteredFrames.Count == 0)
         {
             return new { averageMap = new int[0][] };
@@ -403,21 +368,19 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
         return new { averageMap };
     }
     
+    // Helper to get graph data points for a patient on a specific day with time filtering
     private object GetGraphData(Patient patient, DateOnly dateOnly, int? hoursBack, string? from, string? to)
     {
         // Get all pressure maps for the requested day
         var mapsForDay = patient.PressureMaps.Where(pm => pm.Day == dateOnly).ToList();
         if (mapsForDay.Count == 0) return Array.Empty<object>();
-
-        var (rangeStart, rangeEnd) = getTimeRange(dateOnly, hoursBack, from, to);
-
+        var (rangeStart, rangeEnd) = GetTimeRange(dateOnly, hoursBack, from, to);
         // Filter and sort frames by time
         var filteredFrames = mapsForDay
             .SelectMany(m => m.Frames)
             .Where(f => f.Timestamp >= rangeStart && f.Timestamp < rangeEnd)
             .OrderBy(f => f.Timestamp)
             .ToList();
-
         // So, the frames are grouped into buckets of time (e.g 5 seconds) to reduce the number of points shown on the graph
         // This will return a list of points with t (time) and v (value)
         // This is done to smooth out the graph and make it more readable
@@ -437,7 +400,6 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 v = (int)Math.Round(g.Average(f => f.PeakPressure)) 
             })
             .ToList();
-
         // Converted to JSON for frontend support
         return new {
             day = dateOnly.ToString("yyyy-MM-dd"),
@@ -448,14 +410,13 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
     }
     
     // Helper method to parse and calculate start/end times based on optional filter parameters
-    private (DateTime rangeStart, DateTime rangeEnd) getTimeRange(DateOnly dateOnly, int? hoursBack, string? from, string? to)
+    private (DateTime rangeStart, DateTime rangeEnd) GetTimeRange(DateOnly dateOnly, int? hoursBack, string? from, string? to)
     {
         // This is the range that the user will filter by (initially the full day)
         var dayStart = new DateTime(dateOnly.Year, dateOnly.Month, dateOnly.Day, 0, 0, 0, DateTimeKind.Unspecified);
         var dayEnd = dayStart.AddDays(1);
         var rangeStart = dayStart;
         var rangeEnd = dayEnd;
-
         // Hours back means how many hours we go back from the end of the day
         // For example, if hoursBack was 2, and day was 2025-10-18, then the range would be 2024-10-18 22:00 to 2024-10-18 00:00
         if (hoursBack.HasValue && hoursBack.Value > 0)
@@ -475,18 +436,18 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 if (parsedTo > rangeStart && parsedTo <= dayEnd) rangeEnd = parsedTo;
             }
         }
-
         return (rangeStart, rangeEnd);
     }
     
+    // Helper method to calculate the average pressure map from a list of frames
     private int[][] CalculateAverageMap(List<PressureFrame> frames)
     {
+        // Initialize the average map
         var averageMap = new int[32][];
         for (var i = 0; i < 32; i++)
         {
             averageMap[i] = new int[32];
         }
-
         // Sum all frames
         foreach (var frame in frames)
         {
@@ -499,7 +460,6 @@ public class PressureMapController(ILogger<PressureMapController> logger, Applic
                 }
             }
         }
-
         // Divide by the number of frames to get the average
         for (var i = 0; i < 32; i++)
         {
