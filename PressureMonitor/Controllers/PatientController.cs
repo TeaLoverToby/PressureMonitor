@@ -135,6 +135,77 @@ public class PatientController(ILogger<PatientController> logger, ApplicationDbC
         }
     }
     
+    //There have been numerous revisions of this function. This is the latest non working version due to time constraints.
+    //Left in for proof of contribution.
+    [HttpGet]
+    public IActionResult RealTimeAlerts()
+    {
+        var alerts = new List<Alert>();
+        //Connects to the database
+        var connectionString = "Data Source=PressureMonitor.db";
+
+
+        using (var connection = new SqliteConnection(connectionString))
+        {
+            connection.Open();
+
+
+            var command = connection.CreateCommand();
+            //Reads the most recent 30 records from the PressureFrames table, evaluates them, and adds them to the alerts list.
+            //This was originally designed to have more records to give a better overview, however less records were used to improve performance.
+            command.CommandText =
+                @"
+           SELECT
+               ContactAreaPercentage,
+               PeakPressure,
+               MinValue,
+               Id
+           FROM pressureFrames
+           ORDER BY TIMESTAMP DESC
+           LIMIT 30;
+       ";
+
+
+            using (var reader = command.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    // create PressureFrame object from database row for data comparison
+                    var frame = new PressureFrame
+                    {
+                        ContactAreaPercentage = reader.GetInt32(0),
+                        PeakPressure = reader.GetInt32(1),
+                        MinValue = reader.GetInt32(2),
+                        Id = reader.GetInt32(3)
+                    };
+
+
+                    // evaluate frame using the separate evaluator and attach result
+                    // This does not work as intended, after numerous hours of troubleshooting I was unable to resolve the issue.
+                    var model = RealTimeAlertEvaluator.Evaluate(frame);
+                    alerts.Add(new Alert
+                    {
+                        FrameId = frame.Id,
+                        Frame = frame,
+                    });
+                }
+            }
+        }
+
+
+        return View(alerts);
+    }
+
+    // Simple Alert model to hold alert data for the RealTimeAlerts view
+    public class Alert
+    {
+        public int Id { get; set; }
+        public int FrameId { get; set; }
+
+        // Navigation property
+        public PressureFrame Frame { get; set; }
+    }
+    
     /// <summary>
     /// Displays the Upload view, allows patients to upload their pressure map data.
     /// </summary>

@@ -1,74 +1,63 @@
-﻿namespace PressureMonitor.Models;
-
-public class RealTimeAlertModel
+﻿namespace PressureMonitor.Models
 {
-    public ContactAreaError ContactArea { get; set; } = new ContactAreaError();
-    public PeakPressureError PeakPressure { get; set; } = new PeakPressureError();
-    public MinimumPressureError MinimumPressure { get; set; } = new MinimumPressureError();
+   public static class RealTimeAlertEvaluator
+   {
+       // This evaluator is used with predefined thresholds to evaluate a PressureFrame which would've been added to a real time alert
+       // Evaluate a frame and return a small model describing levels per metric.
+       public static RealTimeAlertModel Evaluate(PressureFrame frame)
+       {
+           const int PeakWarning = 150;
+           const int PeakCritical = 200;
 
+
+           const int ContactAreaWarning = 20;   // lower is worse
+           const int ContactAreaCritical = 10;
+
+
+           const int MinPressureWarning = 10;   // lower is worse
+           const int MinPressureCritical = 5;
+
+
+           //Series of comparison statements to determine the alert level for each metric.
+           AlertLevel EvaluateHigherIsWorse(double value, int warning, int critical)
+           {
+               if (value >= critical) return AlertLevel.Critical;
+               if (value >= warning) return AlertLevel.Warning;
+               return AlertLevel.None;
+           }
+
+
+           AlertLevel EvaluateLowerIsWorse(double value, int warning, int critical)
+           {
+               if (value <= critical) return AlertLevel.Critical;
+               if (value <= warning) return AlertLevel.Warning;
+               return AlertLevel.None;
+           }
+
+
+           return new RealTimeAlertModel
+           {
+               PeakPressureLevel = EvaluateHigherIsWorse(frame.PeakPressure, PeakWarning, PeakCritical),
+               ContactAreaLevel = EvaluateLowerIsWorse(frame.ContactAreaPercentage, ContactAreaWarning, ContactAreaCritical),
+               MinimumPressureLevel = EvaluateLowerIsWorse(frame.MinValue, MinPressureWarning, MinPressureCritical)
+           };
+       }
+   }
+
+
+   //This was originally a short term measure to assign alert levels before the db was fully integrated.
+   public enum AlertLevel
+   {
+       None = 0,
+       Warning = 1,
+       Critical = 2
+   }
+
+
+   public class RealTimeAlertModel
+   {
+       public AlertLevel ContactAreaLevel { get; set; }
+       public AlertLevel PeakPressureLevel { get; set; }
+       public AlertLevel MinimumPressureLevel { get; set; }
+   }
 }
-
-//Enum is used to represent different alert levels
-//Temporary until the database is updated to include alert levels for errors
-public enum AlertLevel
-{
-    Normal,
-    Warning,
-    Critical
-}
-
-//This class is logic to show an error to the clinician when the contact area percentage is too low
-public class ContactAreaError
-{
-    public int ContactAreaPercentage { get; set; }
-    
-    //Compares the contact area percentage to multiple threshold values to determine the alert level
-    public AlertLevel AlertLevel
-    {
-        get
-        {
-            if (ContactAreaPercentage < 20)
-                return AlertLevel.Critical;
-            if (ContactAreaPercentage < 30)
-                return AlertLevel.Warning;
-            //If the contact area percentage is above the threshold values, return normal
-            return AlertLevel.Normal;
-        }
-    }
-}    
-
-//This class is logic to show an error to the clinician when peak pressure is too high
-public class PeakPressureError
-{
-    public int PeakPressure { get; set; }
-    
-    public AlertLevel AlertLevel
-    {
-        get
-        {
-            if (PeakPressure > 200)
-                return AlertLevel.Critical;
-            if (PeakPressure > 175)
-                return AlertLevel.Warning;
-            return AlertLevel.Normal;
-        }
-    }
-}    
-
-//This class is logic to show an error to the clinician when minimum pressure is too low
-public class MinimumPressureError
-{
-    public int MinValue { get; set; }
-    
-    public AlertLevel AlertLevel
-    {
-        get
-        {
-            if (MinValue < 5)
-                return AlertLevel.Critical;
-            if (MinValue < 10)
-                return AlertLevel.Warning;
-            return AlertLevel.Normal;
-        }
-    }
-}    
