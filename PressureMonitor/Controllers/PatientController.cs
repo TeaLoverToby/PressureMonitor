@@ -195,7 +195,28 @@ public class PatientController(ILogger<PatientController> logger, ApplicationDbC
 
         return View(alerts);
     }
+    
+    //Checks if the patient is logged in and displays the DataView page.
+    [HttpGet]
+    public async Task<IActionResult> DataView()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+        {
+            return RedirectToAction("Login", "Account");
+        }
 
+        var patient = await context.Patients
+            .Include(p => p.User)
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+
+        if (patient == null)
+        {
+            return RedirectToAction("Login", "Account");
+        }
+        return View();
+    }
+    
     // Simple Alert model to hold alert data for the RealTimeAlerts view
     public class Alert
     {
